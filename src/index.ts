@@ -4,6 +4,7 @@ import { startOfToday, endOfToday } from 'date-fns'
 import config from './config'
 
 const api = new InvestSDK(config.api)
+await api.sandboxClear()
 
 const { figi } = await api.searchOne({ ticker: config.ticker })
 
