@@ -25,10 +25,9 @@ const reducer = createReducer<CandleStreaming[]>([], (builder) =>
       state[index] = action.payload
     } else {
       state.push(action.payload)
-
-      // New candle received, update the chart
-      logChart(state.map(({ c }) => c))
     }
+
+    logChart(state.map(({ c }) => c))
   })
 )
 

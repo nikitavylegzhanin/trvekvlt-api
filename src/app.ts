@@ -1,35 +1,37 @@
-import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
-import { sub } from 'date-fns'
+import InvestSDK, {
+  CandleResolution,
+  Interval,
+} from '@tinkoff/invest-openapi-js-sdk'
 
 import store, { editConfig, addCandles } from './store'
+import { getOpenPhaseDate } from './date'
 
 const { config } = store.getState()
 const api = new InvestSDK(config.api)
 
 const getTickerInfo = async (ticker: string) => {
-  store.dispatch(editConfig({ name: 'ticker', value: ticker }))
+  const { figi } = await api.searchOne({ ticker })
 
-  const { figi } = await api.searchOne({ ticker: config.ticker })
-  store.dispatch(editConfig({ name: 'figi', value: figi }))
+  store.dispatch(editConfig({ ticker, figi }))
 }
 
 const getHistory = async () => {
-  const { figi } = store.getState().config
+  const { figi, interval } = store.getState().config
+  const date = getOpenPhaseDate()
 
   const { candles } = await api.candlesGet({
     figi,
-    from: sub(new Date(), { minutes: 10 }).toISOString(),
-    to: new Date().toISOString(),
-    interval: '1min',
+    interval: interval as CandleResolution,
+    ...date,
   })
 
   store.dispatch(addCandles(candles))
 }
 
 export const watchPrice = () => {
-  const { figi } = store.getState().config
+  const { figi, interval } = store.getState().config
 
-  api.candle({ figi, interval: '1min' }, (candle) => {
+  api.candle({ figi, interval: interval as Interval }, (candle) => {
     store.dispatch(addCandles(candle))
   })
 }
