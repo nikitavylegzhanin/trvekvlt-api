@@ -1,6 +1,8 @@
 import { createReducer, createAction } from '@reduxjs/toolkit'
 import { CandleStreaming } from '@tinkoff/invest-openapi-js-sdk'
 
+import { logChart } from '../chart'
+
 enum ActionTypes {
   ADD = 'Candles/ADD',
 }
@@ -23,6 +25,9 @@ const reducer = createReducer<CandleStreaming[]>([], (builder) =>
       state[index] = action.payload
     } else {
       state.push(action.payload)
+
+      // New candle received, update the chart
+      logChart(state.map(({ c }) => c))
     }
   })
 )
