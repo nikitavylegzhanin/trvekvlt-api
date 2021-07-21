@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@tinkoff/invest-openapi-js-sdk": "^1.5.0",
+    "asciichart": "^1.5.25",
     "date-fns": "^2.22.1"
   },
   "devDependencies": {
