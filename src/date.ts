@@ -1,9 +1,12 @@
-import { startOfToday, set } from 'date-fns'
+import { startOfToday, endOfToday, set } from 'date-fns'
 
-export const getOpenPhaseDate = () => {
-  const today = startOfToday()
-  const from = set(today, { hours: 16, minutes: 30 }).toISOString()
-  const to = set(today, { hours: 23 }).toISOString()
+export const getLastTradingSession = () => {
+  const from = set(startOfToday(), {
+    //
+  }).toISOString()
+  const to = set(endOfToday(), {
+    //
+  }).toISOString()
 
   return { from, to }
 }

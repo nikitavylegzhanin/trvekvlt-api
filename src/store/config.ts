@@ -4,12 +4,13 @@ import {
   ActionCreatorWithPayload,
 } from '@reduxjs/toolkit'
 
+const isSandbox = process.env.IS_SANDBOX === 'true'
 const params = { interval: '5min', ticker: '', figi: '' }
 const initialState = {
   api: {
-    apiURL: process.env.API_URL,
+    apiURL: process.env[isSandbox ? 'API_URL_SANDBOX' : 'API_URL'],
+    secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],
     socketURL: process.env.API_URL_WS,
-    secretToken: process.env.TOKEN_SANDBOX,
   },
   ...params,
 }
