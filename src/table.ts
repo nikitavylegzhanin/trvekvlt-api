@@ -32,19 +32,35 @@ const getFooterDate = (positions: Position[]) => {
 export const toTable = (positions: Position[]) => {
   const table = new Table({
     head: ['date', 'direction', 'qt', 'avgPrice', 'usd', '%'],
+    chars: {
+      top: '',
+      'top-mid': '',
+      'top-left': '',
+      'top-right': '',
+      bottom: '',
+      'bottom-mid': '',
+      'bottom-left': '',
+      'bottom-right': '',
+      left: '|',
+      'left-mid': '',
+      mid: '',
+      'mid-mid': '',
+      right: '|',
+      'right-mid': '',
+      middle: '|',
+    },
   })
 
   table.push(
-    ...positions
-      .filter(({ isClosed }) => isClosed)
-      .map((position) => [
-        getDate(position.operations),
-        position.direction === 'Buy' ? 'Long' : 'Short',
-        position.qt,
-        position.avgPrice.toFixed(2),
-        position.result.usd.toFixed(2),
-        (position.result.percentage * 100).toFixed(2),
-      ]),
+    [':--', ':--', ':--', ':--', ':--', ':--'],
+    ...positions.map((position) => [
+      getDate(position.operations),
+      position.direction === 'Buy' ? 'Long' : 'Short',
+      position.qt,
+      position.avgPrice.toFixed(2),
+      position.result.usd.toFixed(2),
+      (position.result.percentage * 100).toFixed(2),
+    ]),
     // prettier-ignore
     [
       getFooterDate(positions),
