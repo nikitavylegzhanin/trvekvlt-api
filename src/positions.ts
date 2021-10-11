@@ -83,6 +83,8 @@ const toPositions = (operations: Operation[]): Position => {
   }
 }
 
+const onlyClosed = ({ isClosed }: Position) => isClosed
+
 export const getPositions = async (api: InvestSDK) => {
   const { figi } = store.getState().config
   const date = getLastTradingSession()
@@ -98,4 +100,5 @@ export const getPositions = async (api: InvestSDK) => {
     .sort(byDateAsc)
     .reduce(groupByQt, [[]])
     .map(toPositions)
+    .filter(onlyClosed)
 }
