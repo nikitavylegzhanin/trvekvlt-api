@@ -1,9 +1,3 @@
-import { initApp } from './app'
-import { getPositions } from './positions'
-import { toTable } from './table'
+import { initApp, startReduxDevTool } from './app'
 
-initApp()
-  .then(getPositions)
-  .then(toTable)
-  .then(console.log)
-  .catch(console.error)
+initApp().then(startReduxDevTool).catch(console.error)

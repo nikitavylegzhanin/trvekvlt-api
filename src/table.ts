@@ -1,7 +1,7 @@
 import Table from 'cli-table'
 import { format, parseISO, formatDistanceStrict } from 'date-fns'
 
-import { Position } from './positions'
+import { Position } from './store/positions/reducer'
 
 const FORMAT = 'HH:mm:ss'
 
@@ -29,7 +29,11 @@ const getFooterDate = (positions: Position[]) => {
   return formatDistanceStrict(from, to)
 }
 
+const onlyClosed = ({ isClosed }: Position) => isClosed
+
 export const toTable = (positions: Position[]) => {
+  const closed = positions.filter(onlyClosed)
+
   const table = new Table({
     head: ['date', 'direction', 'qt', 'avgPrice', 'usd', '%'],
     chars: {
@@ -53,7 +57,7 @@ export const toTable = (positions: Position[]) => {
 
   table.push(
     [':--', ':--', ':--', ':--', ':--', ':--'],
-    ...positions.map((position) => [
+    ...closed.map((position) => [
       getDate(position.operations),
       position.direction === 'Buy' ? 'Long' : 'Short',
       position.qt,
@@ -63,12 +67,12 @@ export const toTable = (positions: Position[]) => {
     ]),
     // prettier-ignore
     [
-      getFooterDate(positions),
+      getFooterDate(closed),
       '', '', '',
-      positions.reduce((sum, { result }) => sum + result.usd, 0).toFixed(2),
-      (positions.reduce((sum, { result }) => sum + result.percentage, 0) * 100).toFixed(2),
+      closed.reduce((sum, { result }) => sum + result.usd, 0).toFixed(2),
+      (closed.reduce((sum, { result }) => sum + result.percentage, 0) * 100).toFixed(2),
     ]
   )
 
-  return table.toString()
+  console.log(table.toString())
 }
