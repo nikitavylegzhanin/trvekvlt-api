@@ -1,35 +1,39 @@
 import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
+import { CronJob } from 'cron'
 import reduxDevTools from '@redux-devtools/cli'
 
 import store, { editConfig, addOperations } from './store'
 import { getLastTradingSession } from './date'
 
-const { config } = store.getState()
-const api = new InvestSDK(config.api)
-
-const getTickerInfo = async (ticker: string) => {
-  const { figi } = await api.searchOne({ ticker })
-
-  store.dispatch(editConfig({ ticker, figi }))
-
-  return figi
-}
-
 export const initApp = async () => {
-  const figi = await getTickerInfo('EQT')
-  const date = getLastTradingSession()
-  console.log(date)
+  const { config } = store.getState()
+  const api = new InvestSDK(config.api)
+  const { figi } = await api.searchOne({ ticker: config.ticker })
 
-  const { operations } = await api.operations({
-    figi,
-    ...date,
-  })
-
-  store.dispatch(addOperations(operations))
-
-  api.candle({ figi, interval: '1min' }, (candle) => console.log(candle.time))
+  store.dispatch(editConfig({ figi }))
 
   return api
+}
+
+export const updatePositions = (api: InvestSDK) => {
+  const { start } = new CronJob(
+    '*/30 * * * * *',
+    async () => {
+      const { figi } = store.getState().config
+      const date = getLastTradingSession()
+
+      const { operations } = await api.operations({
+        figi,
+        ...date,
+      })
+
+      store.dispatch(addOperations(operations))
+    },
+    null,
+    true
+  )
+
+  return start
 }
 
 export const startReduxDevTool = () =>

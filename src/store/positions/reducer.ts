@@ -22,15 +22,14 @@ export type Position = {
 }
 
 const reducer = createReducer<Position[]>([], (builder) =>
-  builder.addCase(addOperations, (state, action) => [
-    ...state,
-    ...action.payload
+  builder.addCase(addOperations, (_, action) =>
+    action.payload
+      .slice(0, -2) // Development
       .filter(getComplited)
       .sort(byDateAsc)
-      .slice(0, -2)
       .reduce(groupByQt, [[]])
-      .map(toPositions),
-  ])
+      .map(toPositions)
+  )
 )
 
 export default reducer

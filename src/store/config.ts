@@ -5,7 +5,7 @@ import {
 } from '@reduxjs/toolkit'
 
 const isSandbox = process.env.IS_SANDBOX === 'true'
-const params = { interval: '5min', ticker: '', figi: '' }
+const params = { interval: '5min', ticker: 'EQT', figi: '' }
 const initialState = {
   api: {
     apiURL: process.env[isSandbox ? 'API_URL_SANDBOX' : 'API_URL'],
