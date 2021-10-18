@@ -31,6 +31,8 @@ export const groupByQt = (
   return positions
 }
 
+export const notEmpty = (operations: Operation[]) => operations.length !== 0
+
 const getDirectionByOperationType = (
   operationType: Operation['operationType']
 ) => (operationType === 'Buy' ? Direction.LONG : Direction.SHORT)

@@ -15,7 +15,7 @@ export const initApp = async () => {
   return api
 }
 
-export const updatePositions = (api: InvestSDK) => {
+export const updatePositions = async (api: InvestSDK) => {
   const { start } = new CronJob(
     '*/30 * * * * *',
     async () => {
@@ -30,6 +30,9 @@ export const updatePositions = (api: InvestSDK) => {
       store.dispatch(addOperations(operations))
     },
     null,
+    true,
+    undefined,
+    undefined,
     true
   )
 

@@ -2,7 +2,13 @@ import { createReducer } from '@reduxjs/toolkit'
 import type { Operation } from '@tinkoff/invest-openapi-js-sdk'
 
 import { addOperations } from './actions'
-import { getComplited, byDateAsc, groupByQt, toPositions } from './utils'
+import {
+  getComplited,
+  byDateAsc,
+  groupByQt,
+  notEmpty,
+  toPositions,
+} from './utils'
 
 export enum Direction {
   LONG = 'Buy',
@@ -24,10 +30,10 @@ export type Position = {
 const reducer = createReducer<Position[]>([], (builder) =>
   builder.addCase(addOperations, (_, action) =>
     action.payload
-      .slice(0, -2) // Development
       .filter(getComplited)
       .sort(byDateAsc)
       .reduce(groupByQt, [[]])
+      .filter(notEmpty)
       .map(toPositions)
   )
 )

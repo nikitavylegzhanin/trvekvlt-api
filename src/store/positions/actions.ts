@@ -1,7 +1,7 @@
 import { createAction } from '@reduxjs/toolkit'
 import type { Operation } from '@tinkoff/invest-openapi-js-sdk'
 
-enum ActionTypes {
+export enum ActionTypes {
   ADD_OPERATIONS = 'Positions/ADD_OPERATIONS',
 }
 

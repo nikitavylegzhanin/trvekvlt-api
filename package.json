@@ -11,12 +11,14 @@
     "@tinkoff/invest-openapi-js-sdk": "^1.5.0",
     "cli-table": "^0.3.6",
     "cron": "^1.8.2",
-    "date-fns": "^2.22.1"
+    "date-fns": "^2.22.1",
+    "lodash.isequal": "^4.5.0"
   },
   "devDependencies": {
     "@redux-devtools/cli": "^1.0.0-9",
     "@types/cli-table": "^0.3.0",
     "@types/cron": "^1.7.3",
+    "@types/lodash.isequal": "^4.5.5",
     "@types/node": "^15.14.2",
     "@types/remote-redux-devtools": "^0.5.5",
     "dotenv": "^10.0.0",
