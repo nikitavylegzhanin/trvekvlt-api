@@ -77,7 +77,7 @@ const getTable = (positions: Position[]) => {
 }
 
 const getOpenPositionData = (position?: Position) => {
-  if (!position) return null
+  if (!position) return []
 
   return [position.direction, position.qt, position.avgPrice]
 }
