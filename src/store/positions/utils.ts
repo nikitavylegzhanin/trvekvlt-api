@@ -38,7 +38,7 @@ const getDirectionByOperationType = (
 ) => (operationType === 'Buy' ? Direction.LONG : Direction.SHORT)
 
 const getPaymentSum = (usd: number, { payment, commission }: Operation) =>
-  usd + payment + commission.value
+  usd + payment + commission?.value || 0
 
 const getPriceSum = (avgPrice: number, { price }: Operation) => avgPrice + price
 
