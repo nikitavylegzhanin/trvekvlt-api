@@ -1,3 +1,10 @@
-import { initApp, updatePositions, startReduxDevTool } from './app'
+import {
+  initApp,
+  updatePositions,
+  // startReduxDevTool
+} from './app'
 
-initApp().then(updatePositions).then(startReduxDevTool).catch(console.error)
+initApp()
+  .then(updatePositions)
+  // .then(startReduxDevTool)
+  .catch(console.error)
