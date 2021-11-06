@@ -3,7 +3,11 @@ import { CronJob } from 'cron'
 import reduxDevTools from '@redux-devtools/cli'
 
 import store, { editConfig, addOperations } from './store'
-import { getLastTradingDaySession } from './date'
+import {
+  getLastTradingDaySession,
+  getLastTradingWeekSession,
+  SessionDate,
+} from './date'
 
 export const initApp = async () => {
   const { config } = store.getState()
@@ -15,20 +19,27 @@ export const initApp = async () => {
   return api
 }
 
+const getOperations = async (
+  api: InvestSDK,
+  figi: string,
+  date: SessionDate
+) => {
+  const { operations } = await api.operations({
+    figi,
+    ...date,
+  })
+
+  return store.dispatch(addOperations(operations))
+}
+
 export const updatePositions = async (api: InvestSDK) => {
+  const { figi } = store.getState().config
+
+  await getOperations(api, figi, getLastTradingWeekSession())
+
   const { start } = new CronJob(
     '*/30 * * * * *',
-    async () => {
-      const { figi } = store.getState().config
-      const date = getLastTradingDaySession()
-
-      const { operations } = await api.operations({
-        figi,
-        ...date,
-      })
-
-      store.dispatch(addOperations(operations))
-    },
+    async () => getOperations(api, figi, getLastTradingDaySession()),
     null,
     true,
     undefined,
