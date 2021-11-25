@@ -1,4 +1,7 @@
-import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
+import InvestSDK, {
+  CandleStreaming,
+  CandleStreamingMetaParams,
+} from '@tinkoff/invest-openapi-js-sdk'
 import { CronJob } from 'cron'
 import reduxDevTools from '@redux-devtools/cli'
 
@@ -17,6 +20,14 @@ export const initApp = async () => {
   store.dispatch(editConfig({ figi }))
 
   return api
+}
+
+type GetPriceCb = (x: CandleStreaming, m: CandleStreamingMetaParams) => any
+
+export const getPrice = (cb: GetPriceCb) => (api: InvestSDK) => {
+  const { figi, interval } = store.getState().config
+
+  return api.candle({ figi, interval }, cb)
 }
 
 const getOperations = async (

@@ -1,13 +1,16 @@
 import {
   initApp,
-  updatePositions,
-  // startReduxDevTool
+  // updatePositions,
+  getPrice,
+  startReduxDevTool,
 } from './app'
-import { getWeeklyReport } from './report'
+import { trade } from './trading'
+// import { getWeeklyReport } from './report'
 
 initApp()
-  .then(updatePositions)
-  .then(getWeeklyReport)
-  .then(console.log)
-  // .then(startReduxDevTool)
+  .then(getPrice(trade))
+  // .then(updatePositions)
+  // .then(getWeeklyReport)
+  // .then(console.log)
+  .then(startReduxDevTool)
   .catch(console.error)
