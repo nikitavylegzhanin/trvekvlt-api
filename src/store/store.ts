@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import devToolsEnhancer from 'remote-redux-devtools'
+// import devToolsEnhancer from 'remote-redux-devtools'
 
 import logger from './logger'
 import config from './config'
