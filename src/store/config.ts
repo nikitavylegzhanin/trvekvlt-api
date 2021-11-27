@@ -1,4 +1,3 @@
-import { Interval } from '@tinkoff/invest-openapi-js-sdk'
 import {
   createReducer,
   createAction,
@@ -20,7 +19,6 @@ type EditableParams = {
 
 type State = {
   api: typeof api
-  interval: Interval
 } & EditableParams
 
 const initialState: State = {
@@ -29,7 +27,6 @@ const initialState: State = {
     secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],
     socketURL: process.env.API_URL_WS,
   },
-  interval: '1min',
   ticker: 'GAZP',
 }
 

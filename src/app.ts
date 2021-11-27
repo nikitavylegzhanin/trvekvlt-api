@@ -1,16 +1,7 @@
-import InvestSDK, {
-  CandleStreaming,
-  CandleStreamingMetaParams,
-} from '@tinkoff/invest-openapi-js-sdk'
-import { CronJob } from 'cron'
+import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
 import reduxDevTools from '@redux-devtools/cli'
 
-import store, { editConfig, addOperations } from './store'
-import {
-  getLastTradingDaySession,
-  getLastTradingWeekSession,
-  SessionDate,
-} from './date'
+import store, { editConfig, changePrice } from './store'
 
 export const initApp = async () => {
   const { config } = store.getState()
@@ -22,43 +13,12 @@ export const initApp = async () => {
   return api
 }
 
-type GetPriceCb = (x: CandleStreaming, m: CandleStreamingMetaParams) => any
-
-export const getPrice = (cb: GetPriceCb) => (api: InvestSDK) => {
-  const { figi, interval } = store.getState().config
-
-  return api.candle({ figi, interval }, cb)
-}
-
-const getOperations = async (
-  api: InvestSDK,
-  figi: string,
-  date: SessionDate
-) => {
-  const { operations } = await api.operations({
-    figi,
-    ...date,
-  })
-
-  return store.dispatch(addOperations(operations))
-}
-
-export const updatePositions = async (api: InvestSDK) => {
+export const subscribePrice = (api: InvestSDK) => {
   const { figi } = store.getState().config
 
-  await getOperations(api, figi, getLastTradingWeekSession())
-
-  const { start } = new CronJob(
-    '*/30 * * * * *',
-    async () => getOperations(api, figi, getLastTradingDaySession()),
-    null,
-    true,
-    undefined,
-    undefined,
-    true
+  return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) =>
+    store.dispatch(changePrice({ ask: asks[0][0], bid: bids[0][0] }))
   )
-
-  return start
 }
 
 export const startReduxDevTool = () =>

@@ -1,11 +1,15 @@
 import { createAction } from '@reduxjs/toolkit'
-import type { Operation } from '@tinkoff/invest-openapi-js-sdk'
 
-export enum ActionTypes {
-  ADD_OPERATIONS = 'Positions/ADD_OPERATIONS',
+import { Position } from './reducer'
+
+export enum PositionsActionTypes {
+  OPEN_POSITION = 'Positions/OPEN_POSITION',
+  RESET_POSITIONS = 'Positions/RESET_POSITIONS',
 }
 
-export const addOperations = createAction<
-  Operation[],
-  ActionTypes.ADD_OPERATIONS
->(ActionTypes.ADD_OPERATIONS)
+export const openPosition = createAction<
+  Position,
+  PositionsActionTypes.OPEN_POSITION
+>(PositionsActionTypes.OPEN_POSITION)
+
+export const resetPositions = createAction(PositionsActionTypes.RESET_POSITIONS)
