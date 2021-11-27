@@ -3,7 +3,12 @@ import { Middleware, Dispatch, AnyAction } from '@reduxjs/toolkit'
 import { Store } from './store'
 import { PriceActionTypes, getPrice } from './price'
 import { getNextLevel } from './levels'
-import { getLastPosition, openPosition } from './positions'
+import {
+  getLastPosition,
+  openPosition,
+  closePosition,
+  ClosePositionReason,
+} from './positions'
 
 const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   action: AnyAction
@@ -26,8 +31,15 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   if (nextLevel && (!lastPosition || lastPosition.isClosed)) {
     next(
       openPosition({
-        id: '1',
+        id: Math.random().toString(36),
         levelId: nextLevel.id,
+      })
+    )
+  } else if (nextLevel && lastPosition && !lastPosition.isClosed) {
+    next(
+      closePosition({
+        positionId: lastPosition.id,
+        reason: ClosePositionReason.TP,
       })
     )
   }
