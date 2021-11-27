@@ -15,7 +15,7 @@ describe('Открытие позиции в направлении тренда
 
   const bid = 1
   const ask = 2
-  const levels = [bid, ask].map((value) => ({ value, id: value.toString() }))
+  const levels = [bid, ask, 3].map((value) => ({ value, id: value.toString() }))
 
   store.dispatch(addLevels(levels))
 
@@ -43,6 +43,12 @@ describe('Открытие позиции в направлении тренда
 
     const positionB = getLastPosition(store.getState())
     expect(positionB).toMatchObject<Partial<typeof positionB>>({
+      levelId: levels.find(({ value }) => value === ask).id,
+    })
+
+    store.dispatch(changePrice({ ask: 3, bid }))
+    const positionC = getLastPosition(store.getState())
+    expect(positionC).toMatchObject<Partial<typeof positionC>>({
       levelId: levels.find(({ value }) => value === ask).id,
     })
   })

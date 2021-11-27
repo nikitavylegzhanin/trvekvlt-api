@@ -23,7 +23,7 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   const lastPosition = getLastPosition(state)
   const nextLevel = getNextLevel(state)
 
-  if (nextLevel && !lastPosition?.isClosed) {
+  if (nextLevel && (!lastPosition || lastPosition.isClosed)) {
     next(
       openPosition({
         id: '1',
