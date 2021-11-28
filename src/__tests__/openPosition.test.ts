@@ -22,6 +22,7 @@ describe('Открытие позиции в направлении тренда
   test('по bid price для аптренда', () => {
     store.dispatch(addTrend({ id: '1', direction: TrendDirection.UP }))
 
+    // Изначально нет открытых позиций
     const positionA = getLastPosition(store.getState())
     expect(positionA).toBeUndefined()
 
@@ -46,6 +47,7 @@ describe('Открытие позиции в направлении тренда
       levelId: levels.find(({ value }) => value === ask).id,
     })
 
+    // Только одна открытая заявка
     store.dispatch(changePrice({ ask: 3, bid }))
     const positionC = getLastPosition(store.getState())
     expect(positionC).toMatchObject<Partial<typeof positionC>>({
