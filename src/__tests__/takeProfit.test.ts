@@ -37,5 +37,13 @@ describe('Take profit', () => {
       levelId: '2',
       isClosed: true,
     })
+
+    // Цена возвращается на крайний закрытый уровень → игнорим
+    store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
+    const positionD = getLastPosition(store.getState())
+    expect(positionD).toMatchObject<Partial<typeof positionA>>({
+      levelId: '2',
+      isClosed: true,
+    })
   })
 })

@@ -29,12 +29,14 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   const nextLevel = getNextLevel(state)
 
   if (nextLevel && (!lastPosition || lastPosition.isClosed)) {
-    next(
-      openPosition({
-        id: Math.random().toString(36),
-        levelId: nextLevel.id,
-      })
-    )
+    if (lastPosition?.levelId !== nextLevel.id) {
+      next(
+        openPosition({
+          id: Math.random().toString(36),
+          levelId: nextLevel.id,
+        })
+      )
+    }
   } else if (nextLevel && lastPosition && !lastPosition.isClosed) {
     next(
       closePosition({
