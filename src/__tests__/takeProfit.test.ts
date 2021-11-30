@@ -2,7 +2,7 @@ import store, {
   changePrice,
   getLastPosition,
   resetPositions,
-  addLevels,
+  initLevels,
   addTrend,
   TrendDirection,
   getLevels,
@@ -10,18 +10,17 @@ import store, {
 } from '../store'
 
 describe('Take profit', () => {
-  beforeEach(() => {
-    store.dispatch(resetPositions())
-    store.dispatch(changePrice({ ask: 0, bid: 0 }))
-  })
-
   const levels = [1, 2, 3, 4].map((value) => ({
     value,
     id: value.toString(),
     isDisabled: false,
   }))
 
-  store.dispatch(addLevels(levels))
+  beforeEach(() => {
+    store.dispatch(resetPositions())
+    store.dispatch(changePrice({ ask: 0, bid: 0 }))
+    store.dispatch(initLevels(levels))
+  })
 
   test('по достижению следующего уровня в направлении тренда', () => {
     // 3 --/-\--/-------- | 3, 4, 6
@@ -98,7 +97,7 @@ describe('Take profit', () => {
       closingRules: [ClosingRule.TP],
     })
 
-    // 2. Цена поднимается на 50% от уровня открытия -> уровень доступен для закрытия в 0
+    // 2. Цена поднимается на 50% от уровня открытия → уровень доступен для закрытия в 0
     store.dispatch(changePrice({ ask: 2.4, bid: 2.5 }))
     const position2 = getLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
@@ -122,6 +121,61 @@ describe('Take profit', () => {
       openLevelId: '2',
       isClosed: true,
       closedByRule: ClosingRule.SLT_3TICKS,
+    })
+  })
+
+  test('при отскоке от 70% до середины', () => {
+    // 3 ----------------- |
+    // 70%  ╱╲             | 2, 4
+    // 50% ╱  ╲╱╲          | 3
+    // 2 -╱------╲-------- | 1, 5
+
+    // 1. Открываем позицию в лонг на уровне 2
+    store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
+    const position1 = getLastPosition(store.getState())
+    expect(position1).toMatchObject<Partial<typeof position1>>({
+      openLevelId: '2',
+      closingRules: [ClosingRule.TP],
+    })
+
+    // 2. Цена поднимается на 70% от уровня открытия → доступено закрытие по правилу SLT_50PERCENT
+    store.dispatch(changePrice({ ask: 2.6, bid: 2.7 }))
+    const position2 = getLastPosition(store.getState())
+    expect(position2).toMatchObject<Partial<typeof position2>>({
+      openLevelId: '2',
+      closingRules: [ClosingRule.TP, ClosingRule.SLT_50PERCENT],
+    })
+
+    // 3. Цена возвращается на 50% → закрываем позицию и блокируем открытый уровень
+    store.dispatch(changePrice({ ask: 2.4, bid: 2.5 }))
+    const position3 = getLastPosition(store.getState())
+    expect(position3).toMatchObject<Partial<typeof position3>>({
+      openLevelId: '2',
+      isClosed: true,
+      closedByRule: ClosingRule.SLT_50PERCENT,
+    })
+
+    const closedLevel3 = getLevels(store.getState()).find(
+      (level) => level.id === '2'
+    )
+    expect(closedLevel3).toMatchObject<Partial<typeof closedLevel3>>({
+      isDisabled: true,
+    })
+
+    // 4. Цена поднимается выше 50% → закрытый уровень доступен к открытию
+    store.dispatch(changePrice({ ask: 2.5, bid: 2.6 }))
+    const closedLevel4 = getLevels(store.getState()).find(
+      (level) => level.id === '2'
+    )
+    expect(closedLevel4).toMatchObject<Partial<typeof closedLevel4>>({
+      isDisabled: false,
+    })
+
+    // 5. Цена возвращается на уровень → открываем
+    store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
+    const position5 = getLastPosition(store.getState())
+    expect(position5).toMatchObject<Partial<typeof position5>>({
+      openLevelId: '2',
     })
   })
 })

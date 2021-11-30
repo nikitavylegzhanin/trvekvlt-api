@@ -35,22 +35,33 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   const nextLevel = getNextLevel(state)
   const distance = getPriceDistanceToPrevLevel(state)
 
-  if (lastPosition && distance >= 0.5) {
-    if (!lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS)) {
-      next(
-        addPositionClosingRule({
-          positionId: lastPosition.id,
-          closingRule: ClosingRule.SLT_3TICKS,
-        })
-      )
-    }
+  if (lastPosition) {
+    if (distance >= 0.7) {
+      if (!lastPosition.closingRules.includes(ClosingRule.SLT_50PERCENT)) {
+        next(
+          addPositionClosingRule({
+            positionId: lastPosition.id,
+            closingRule: ClosingRule.SLT_50PERCENT,
+          })
+        )
+      }
+    } else if (distance >= 0.5) {
+      if (!lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS)) {
+        next(
+          addPositionClosingRule({
+            positionId: lastPosition.id,
+            closingRule: ClosingRule.SLT_3TICKS,
+          })
+        )
+      }
 
-    if (lastPosition.openLevel?.isDisabled) {
-      next(enableLevel(lastPosition.openLevelId))
-    }
+      if (lastPosition.openLevel?.isDisabled) {
+        next(enableLevel(lastPosition.openLevelId))
+      }
 
-    if (lastPosition.closedLevel?.isDisabled) {
-      next(enableLevel(lastPosition.closedLevelId))
+      if (lastPosition.closedLevel?.isDisabled) {
+        next(enableLevel(lastPosition.closedLevelId))
+      }
     }
   }
 
@@ -77,6 +88,19 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
 
       // disable the closed level
       next(disableLevel(nextLevel.id))
+    } else if (
+      lastPosition.closingRules.includes(ClosingRule.SLT_50PERCENT) &&
+      distance <= 0.5
+    ) {
+      // close by SLT_50PERCENT
+      next(
+        closePosition({
+          positionId: lastPosition.id,
+          closedByRule: ClosingRule.SLT_50PERCENT,
+        })
+      )
+
+      next(disableLevel(lastPosition.openLevelId))
     } else if (
       lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS) &&
       Math.abs(lastPosition.openLevel.value - lastPrice) <= 3
