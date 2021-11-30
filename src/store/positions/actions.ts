@@ -22,6 +22,7 @@ export enum ClosePositionReason {
 type ClosePositionPayload = {
   positionId: string
   reason: ClosePositionReason
+  closedLevelId?: string
 }
 
 export const closePosition = createAction<

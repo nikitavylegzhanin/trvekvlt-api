@@ -4,8 +4,8 @@ import { resetPositions, openPosition, closePosition } from './actions'
 
 export type Position = {
   id: string
-  levelId: string
-  isClosed?: boolean
+  openLevelId: string
+  closedLevelId?: string
 }
 
 const reducer = createReducer<Position[]>([], (builder) =>
@@ -15,7 +15,7 @@ const reducer = createReducer<Position[]>([], (builder) =>
     .addCase(closePosition, (state, action) =>
       state.map((position) => ({
         ...position,
-        isClosed: position.id === action.payload.positionId,
+        closedLevelId: action.payload.closedLevelId,
       }))
     )
 )
