@@ -6,6 +6,7 @@ import store, {
   addTrend,
   TrendDirection,
   getLevels,
+  ClosingRule,
 } from '../store'
 
 describe('Take profit', () => {
@@ -49,6 +50,7 @@ describe('Take profit', () => {
     expect(position3).toMatchObject<Partial<typeof position3>>({
       openLevelId: '2',
       closedLevelId: '3',
+      closedByRule: ClosingRule.TP,
     })
 
     // 4. Цена держится на закрытом уровне → закрытый уровень выключен
@@ -80,6 +82,46 @@ describe('Take profit', () => {
     const position6 = getLastPosition(store.getState())
     expect(position6).toMatchObject<Partial<typeof position6>>({
       openLevelId: '3',
+    })
+  })
+
+  test('при отскоке к безубыточному уровню от середины расстояния до следующего уровня', () => {
+    // 3 ---------------- |
+    //    ╱ ╲             | 2, 3
+    // 2 ╱---╲-╱--------- | 1, 4
+
+    // 1. Открываем позицию в лонг на уровне 2
+    store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
+    const position1 = getLastPosition(store.getState())
+    expect(position1).toMatchObject<Partial<typeof position1>>({
+      openLevelId: '2',
+      closingRules: [ClosingRule.TP],
+    })
+
+    // 2. Цена поднимается на 50% от уровня открытия -> уровень доступен для закрытия в 0
+    store.dispatch(changePrice({ ask: 2.4, bid: 2.5 }))
+    const position2 = getLastPosition(store.getState())
+    expect(position2).toMatchObject<Partial<typeof position2>>({
+      openLevelId: '2',
+      closingRules: [ClosingRule.TP, ClosingRule.SLT_3TICKS],
+    })
+
+    // 3. Возвращается на 3 тика до средней цены → закрываем позицию
+    store.dispatch(changePrice({ ask: 2.2, bid: 2.3 }))
+    const position3 = getLastPosition(store.getState())
+    expect(position3).toMatchObject<Partial<typeof position3>>({
+      openLevelId: '2',
+      isClosed: true,
+      closedByRule: ClosingRule.SLT_3TICKS,
+    })
+
+    // 4. Закрытая позиция по стопу не открывается второй раз
+    store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
+    const position4 = getLastPosition(store.getState())
+    expect(position4).toMatchObject<Partial<typeof position4>>({
+      openLevelId: '2',
+      isClosed: true,
+      closedByRule: ClosingRule.SLT_3TICKS,
     })
   })
 })

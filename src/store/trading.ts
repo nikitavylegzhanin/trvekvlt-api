@@ -5,13 +5,15 @@ import {
   PriceActionTypes,
   getPrice,
   getPriceDistanceToPrevLevel,
+  getLastPrice,
 } from './price'
 import { getNextLevel, disableLevel, enableLevel } from './levels'
 import {
   openPosition,
   closePosition,
-  ClosePositionReason,
+  ClosingRule,
   getLastPositionWithLevels,
+  addPositionClosingRule,
 } from './positions'
 
 const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
@@ -34,6 +36,15 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   const distance = getPriceDistanceToPrevLevel(state)
 
   if (lastPosition && distance >= 0.5) {
+    if (!lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS)) {
+      next(
+        addPositionClosingRule({
+          positionId: lastPosition.id,
+          closingRule: ClosingRule.SLT_3TICKS,
+        })
+      )
+    }
+
     if (lastPosition.openLevel?.isDisabled) {
       next(enableLevel(lastPosition.openLevelId))
     }
@@ -43,31 +54,43 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
     }
   }
 
-  if (nextLevel && (!lastPosition || !!lastPosition.closedLevelId)) {
-    if (!nextLevel.isDisabled) {
+  if (!lastPosition || !!lastPosition.isClosed) {
+    if (nextLevel && !nextLevel.isDisabled) {
       // open the position
-      next(
-        openPosition({
-          id: Math.random().toString(36),
-          openLevelId: nextLevel.id,
-        })
-      )
+      next(openPosition({ openLevelId: nextLevel.id }))
 
       // disable the open level
       next(disableLevel(nextLevel.id))
     }
-  } else if (nextLevel && lastPosition && !lastPosition.closedLevelId) {
-    // close the position by TP
-    next(
-      closePosition({
-        positionId: lastPosition.id,
-        reason: ClosePositionReason.TP,
-        closedLevelId: nextLevel.id,
-      })
-    )
+  } else {
+    const lastPrice = getLastPrice(state)
 
-    // disable the closed level
-    next(disableLevel(nextLevel.id))
+    // close the position by TP
+    if (nextLevel && !nextLevel.isDisabled) {
+      next(
+        closePosition({
+          positionId: lastPosition.id,
+          closedLevelId: nextLevel.id,
+          closedByRule: ClosingRule.TP,
+        })
+      )
+
+      // disable the closed level
+      next(disableLevel(nextLevel.id))
+    } else if (
+      lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS) &&
+      Math.abs(lastPosition.openLevel.value - lastPrice) <= 3
+    ) {
+      // close by SLT_3TICKS
+      next(
+        closePosition({
+          positionId: lastPosition.id,
+          closedByRule: ClosingRule.SLT_3TICKS,
+        })
+      )
+
+      next(disableLevel(lastPosition.openLevelId))
+    }
   }
 
   return result
