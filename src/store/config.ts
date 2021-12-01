@@ -17,11 +17,11 @@ type EditableParams = {
   figi?: string
 }
 
-type State = {
+type Config = {
   api: typeof api
 } & EditableParams
 
-const initialState: State = {
+const initialState: Config = {
   api: {
     apiURL: process.env[isSandbox ? 'API_URL_SANDBOX' : 'API_URL'],
     secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],

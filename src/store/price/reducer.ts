@@ -2,7 +2,12 @@ import { createReducer } from '@reduxjs/toolkit'
 
 import { changePrice } from './actions'
 
-const initState = {
+export type Price = {
+  ask: number
+  bid: number
+}
+
+const initState: Price = {
   ask: 0,
   bid: 0,
 }
