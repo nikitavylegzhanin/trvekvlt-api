@@ -8,6 +8,7 @@ import {
 } from './actions'
 
 export enum ClosingRule {
+  SL,
   TP,
   SLT_3TICKS,
   SLT_50PERCENT,
@@ -29,7 +30,7 @@ const reducer = createReducer<Position[]>([], (builder) =>
       state.concat({
         ...action.payload,
         id: Math.random().toString(36),
-        closingRules: [ClosingRule.TP],
+        closingRules: [ClosingRule.SL, ClosingRule.TP],
       })
     )
     .addCase(closePosition, (state, action) =>

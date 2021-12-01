@@ -1,6 +1,8 @@
 import { createSelector } from '@reduxjs/toolkit'
 
 import { Store } from '../store'
+import { getLastPrice } from '../price'
+import { getLastTrend, TrendDirection } from '../trends'
 
 const getState = (state: Store) => state
 
@@ -21,4 +23,15 @@ export const getLastPositionWithLevels = createSelector(
           ),
         }
       : undefined
+)
+
+export const getPositionProfit = createSelector(
+  [getLastPositionWithLevels, getLastTrend, (state) => state.price],
+  (position, lastTrend, price) => {
+    const lastPrice = getLastPrice(price)
+
+    return lastTrend?.direction === TrendDirection.UP
+      ? lastPrice - position.openLevel.value
+      : position.openLevel.value - lastPrice
+  }
 )

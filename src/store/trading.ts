@@ -5,7 +5,7 @@ import {
   PriceActionTypes,
   getPrice,
   getPriceDistanceToPrevLevel,
-  getLastPrice,
+  selectLastPrice,
 } from './price'
 import { getNextLevel, disableLevel, enableLevel } from './levels'
 import {
@@ -14,6 +14,7 @@ import {
   ClosingRule,
   getLastPositionWithLevels,
   addPositionClosingRule,
+  getPositionProfit,
 } from './positions'
 
 const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
@@ -74,7 +75,8 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
       next(disableLevel(nextLevel.id))
     }
   } else {
-    const lastPrice = getLastPrice(state)
+    const lastPrice = selectLastPrice(state)
+    const positionProfit = getPositionProfit(state)
 
     // close the position by TP
     if (nextLevel && !nextLevel.isDisabled) {
@@ -114,6 +116,18 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
       )
 
       next(disableLevel(lastPosition.openLevelId))
+    } else if (
+      lastPosition.closingRules.includes(ClosingRule.SL) &&
+      positionProfit < 0 &&
+      distance >= 0.5
+    ) {
+      // close by SL
+      next(
+        closePosition({
+          positionId: lastPosition.id,
+          closedByRule: ClosingRule.SL,
+        })
+      )
     }
   }
 
