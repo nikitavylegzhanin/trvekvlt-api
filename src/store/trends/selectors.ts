@@ -11,7 +11,8 @@ export const selectTrends: Selector<Store, Trend[]> = createSelector(
   getState
 )
 
+export const getLastTrend = findLast<Trend>(T)
 export const selectLastTrend: Selector<Store, Trend> = createSelector(
   getState,
-  findLast<Trend>(T)
+  getLastTrend
 )

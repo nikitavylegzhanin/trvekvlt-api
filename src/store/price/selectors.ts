@@ -3,8 +3,8 @@ import { identity, path } from 'ramda'
 
 import { Price } from './reducer'
 import { Store } from '../store'
-import { selectLastTrend, TrendDirection, Trend } from '../trends'
-import { selectLastPositionWithLevels } from '../positions'
+import { getLastTrend, TrendDirection, Trend } from '../trends'
+import { getLastPosition, getLastPositionWithLevels } from '../positions'
 
 const getState = path<Store['price']>(['price'])
 
@@ -13,12 +13,15 @@ export const selectPrice: Selector<Store, Price> = createSelector(
   getState
 )
 
-export const getLastPrice = (lastPrice: Price, lastTrend: Trend) =>
-  lastTrend?.direction === TrendDirection.UP ? lastPrice.bid : lastPrice.ask
-
+export const getLastPrice = (price: Price, lastTrend: Trend) =>
+  lastTrend?.direction === TrendDirection.UP ? price.bid : price.ask
 export const selectLastPrice: Selector<Store, number> = createSelector(
-  [getState, selectLastTrend],
-  getLastPrice
+  [getState, path<Store['trends']>(['trends'])],
+  (price, trends) => {
+    const lastTrends = getLastTrend(trends)
+
+    return getLastPrice(price, lastTrends)
+  }
 )
 
 export const selectPriceDistanceToPrevLevel: Selector<
@@ -27,13 +30,18 @@ export const selectPriceDistanceToPrevLevel: Selector<
 > = createSelector(
   [
     selectLastPrice,
-    selectLastPositionWithLevels,
+    path<Store['positions']>(['positions']),
     path<Store['levels']>(['levels']),
   ],
-  (lastPrice, lastPosition, levels) => {
+  (lastPrice, positions, levels) => {
+    const lastPosition = getLastPosition(positions)
+
     if (!lastPosition) return 0
 
-    const positionLevel = lastPosition.closedLevel || lastPosition.openLevel
+    const positionWithLevels = getLastPositionWithLevels(lastPosition, levels)
+
+    const positionLevel =
+      positionWithLevels.closedLevel || positionWithLevels.openLevel
 
     if (lastPrice === positionLevel.value) return 0
 

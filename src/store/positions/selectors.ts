@@ -5,7 +5,7 @@ import { Position } from './reducer'
 import { Store } from '../store'
 import { Level } from '../levels'
 import { getLastPrice } from '../price'
-import { selectLastTrend, TrendDirection } from '../trends'
+import { getLastTrend, TrendDirection } from '../trends'
 
 const getState = path<Store['positions']>(['positions'])
 
@@ -14,9 +14,10 @@ export const selectPositions: Selector<Store, Position[]> = createSelector(
   getState
 )
 
+export const getLastPosition = findLast<Position>(T)
 export const selectLastPosition: Selector<Store, Position> = createSelector(
   getState,
-  findLast<Position>(T)
+  getLastPosition
 )
 
 type PositionWithLevels = Position & {
@@ -24,31 +25,37 @@ type PositionWithLevels = Position & {
   closedLevel?: Level
 }
 
+export const getLastPositionWithLevels = (
+  position: Position,
+  levels: Level[]
+) => {
+  if (!position) {
+    return undefined
+  }
+
+  return {
+    ...position,
+    openLevel: find<Level>(propEq('id', position.openLevelId), levels),
+    closedLevel: find<Level>(propEq('id', position.closedLevelId), levels),
+  }
+}
+
 export const selectLastPositionWithLevels: Selector<
   Store,
   PositionWithLevels
 > = createSelector(
   [selectLastPosition, path<Store['levels']>(['levels'])],
-  (position, levels) => {
-    if (!position) {
-      return undefined
-    }
-
-    return {
-      ...position,
-      openLevel: find<Level>(propEq('id', position.openLevelId), levels),
-      closedLevel: find<Level>(propEq('id', position.closedLevelId), levels),
-    }
-  }
+  getLastPositionWithLevels
 )
 
 export const selectPositionProfit: Selector<Store, number> = createSelector(
   [
     selectLastPositionWithLevels,
-    selectLastTrend,
+    path<Store['trends']>(['trends']),
     path<Store['price']>(['price']),
   ],
-  (position, lastTrend, price) => {
+  (position, trends, price) => {
+    const lastTrend = getLastTrend(trends)
     const lastPrice = getLastPrice(price, lastTrend)
 
     return lastTrend?.direction === TrendDirection.UP

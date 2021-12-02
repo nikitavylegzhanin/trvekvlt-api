@@ -1,12 +1,12 @@
 import { Middleware, Dispatch, AnyAction } from '@reduxjs/toolkit'
 
-import { Store } from './store'
+import { Store } from '../store'
 import {
   PriceActionTypes,
   selectPriceDistanceToPrevLevel,
   selectLastPrice,
-} from './price'
-import { selectNextLevel, disableLevel, enableLevel } from './levels'
+} from './'
+import { selectNextLevel, disableLevel, enableLevel } from '../levels'
 import {
   openPosition,
   closePosition,
@@ -14,17 +14,17 @@ import {
   selectLastPositionWithLevels,
   addPositionClosingRule,
   selectPositionProfit,
-} from './positions'
+} from '../positions'
 
-const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
+const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   action: AnyAction
 ) => {
   if (action.type !== PriceActionTypes.CHANGE_PRICE) return next(action)
 
+  // Process trading logic when price changes
   const result = next(action)
   const state = store.getState() as Store
 
-  // start trading
   const lastPosition = selectLastPositionWithLevels(state)
   const nextLevel = selectNextLevel(state)
   const distance = selectPriceDistanceToPrevLevel(state)
@@ -127,4 +127,4 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   return result
 }
 
-export default trading
+export default middleware
