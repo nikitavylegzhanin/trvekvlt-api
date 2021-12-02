@@ -1,12 +1,13 @@
 import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
 import reduxDevTools from '@redux-devtools/cli'
+import { or } from 'ramda'
 
 import store from './store'
-import { editConfig } from './store/config'
-import { changePrice } from './store/price'
+import { selectConfig, editConfig } from './store/config'
+import { changePrice, selectPrice } from './store/price'
 
 export const initApp = async () => {
-  const { config } = store.getState()
+  const config = selectConfig(store.getState())
   const api = new InvestSDK(config.api)
   const { figi } = await api.searchOne({ ticker: config.ticker })
 
@@ -16,11 +17,24 @@ export const initApp = async () => {
 }
 
 export const subscribePrice = (api: InvestSDK) => {
-  const { figi } = store.getState().config
+  const state = store.getState()
+  const { figi } = selectConfig(state)
+  const price = selectPrice(state)
 
-  return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) =>
-    store.dispatch(changePrice({ ask: asks[0][0], bid: bids[0][0] }))
-  )
+  let ask = price.ask
+  let bid = price.bid
+
+  return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) => {
+    const [lastAsk] = asks[0]
+    const [lastBid] = bids[0]
+
+    if (or(ask !== lastAsk, bid !== lastBid)) {
+      ask = lastAsk
+      bid = lastBid
+
+      return store.dispatch(changePrice({ ask: asks[0][0], bid: bids[0][0] }))
+    }
+  })
 }
 
 export const startReduxDevTool = () =>

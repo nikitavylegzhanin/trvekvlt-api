@@ -1,8 +1,6 @@
-import {
-  createReducer,
-  createAction,
-  ActionCreatorWithPayload,
-} from '@reduxjs/toolkit'
+import { createReducer } from '@reduxjs/toolkit'
+
+import { editConfig } from './actions'
 
 const isSandbox = process.env.IS_SANDBOX === 'true'
 
@@ -12,14 +10,14 @@ const api = {
   socketURL: process.env.API_URL_WS,
 }
 
-type EditableParams = {
+export type EditableConfigParams = {
   ticker?: string
   figi?: string
 }
 
 type Config = {
   api: typeof api
-} & EditableParams
+} & EditableConfigParams
 
 const initialState: Config = {
   api: {
@@ -27,18 +25,8 @@ const initialState: Config = {
     secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],
     socketURL: process.env.API_URL_WS,
   },
-  ticker: 'GAZP',
+  ticker: process.env.TICKER,
 }
-
-enum ActionTypes {
-  EDIT = 'Config/EDIT',
-}
-
-type EditConfigPayload = Partial<EditableParams>
-export const editConfig: ActionCreatorWithPayload<EditConfigPayload> = createAction<
-  EditConfigPayload,
-  ActionTypes.EDIT
->(ActionTypes.EDIT)
 
 const reducer = createReducer(initialState, (builder) =>
   builder.addCase(editConfig, (state, action) => ({
