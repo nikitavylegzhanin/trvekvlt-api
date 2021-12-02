@@ -3,7 +3,6 @@ import { Middleware, Dispatch, AnyAction } from '@reduxjs/toolkit'
 import { Store } from './store'
 import {
   PriceActionTypes,
-  selectPrice,
   selectPriceDistanceToPrevLevel,
   selectLastPrice,
 } from './price'
@@ -22,14 +21,8 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
 ) => {
   if (action.type !== PriceActionTypes.CHANGE_PRICE) return next(action)
 
-  const prevState = store.getState() as Store
   const result = next(action)
   const state = store.getState() as Store
-  const priceA = selectPrice(prevState)
-  const priceB = selectPrice(state)
-
-  if (priceA.ask === priceB.ask && priceA.bid === priceB.bid)
-    return next(action)
 
   // start trading
   const lastPosition = selectLastPositionWithLevels(state)
