@@ -1,11 +1,8 @@
-import store, {
-  addTrend,
-  addLevels,
-  TrendDirection,
-  changePrice,
-  getLastPosition,
-  resetPositions,
-} from '../store'
+import store from '../store'
+import { addLevels } from '../store/levels'
+import { selectLastPosition, resetPositions } from '../store/positions'
+import { changePrice } from '../store/price'
+import { addTrend, TrendDirection } from '../store/trends'
 
 describe('Открытие позиции в направлении тренда', () => {
   beforeEach(() => {
@@ -27,12 +24,12 @@ describe('Открытие позиции в направлении тренда
     store.dispatch(addTrend({ id: '1', direction: TrendDirection.UP }))
 
     // Изначально нет открытых позиций
-    const positionA = getLastPosition(store.getState())
+    const positionA = selectLastPosition(store.getState())
     expect(positionA).toBeUndefined()
 
     store.dispatch(changePrice({ ask, bid }))
 
-    const positionB = getLastPosition(store.getState())
+    const positionB = selectLastPosition(store.getState())
     expect(positionB).toMatchObject<Partial<typeof positionB>>({
       openLevelId: levels.find(({ value }) => value === bid).id,
     })
@@ -41,19 +38,19 @@ describe('Открытие позиции в направлении тренда
   test('по ask price для даунтрейда', () => {
     store.dispatch(addTrend({ id: '2', direction: TrendDirection.DOWN }))
 
-    const positionA = getLastPosition(store.getState())
+    const positionA = selectLastPosition(store.getState())
     expect(positionA).toBeUndefined()
 
     store.dispatch(changePrice({ ask, bid }))
 
-    const positionB = getLastPosition(store.getState())
+    const positionB = selectLastPosition(store.getState())
     expect(positionB).toMatchObject<Partial<typeof positionB>>({
       openLevelId: levels.find(({ value }) => value === ask).id,
     })
 
     // Только одна открытая заявка
     store.dispatch(changePrice({ ask: 3, bid }))
-    const positionC = getLastPosition(store.getState())
+    const positionC = selectLastPosition(store.getState())
     expect(positionC).toMatchObject<Partial<typeof positionC>>({
       openLevelId: levels.find(({ value }) => value === ask).id,
     })

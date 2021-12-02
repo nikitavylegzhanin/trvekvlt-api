@@ -3,18 +3,18 @@ import { Middleware, Dispatch, AnyAction } from '@reduxjs/toolkit'
 import { Store } from './store'
 import {
   PriceActionTypes,
-  getPrice,
-  getPriceDistanceToPrevLevel,
+  selectPrice,
+  selectPriceDistanceToPrevLevel,
   selectLastPrice,
 } from './price'
-import { getNextLevel, disableLevel, enableLevel } from './levels'
+import { selectNextLevel, disableLevel, enableLevel } from './levels'
 import {
   openPosition,
   closePosition,
   ClosingRule,
-  getLastPositionWithLevels,
+  selectLastPositionWithLevels,
   addPositionClosingRule,
-  getPositionProfit,
+  selectPositionProfit,
 } from './positions'
 
 const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
@@ -25,16 +25,16 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   const prevState = store.getState() as Store
   const result = next(action)
   const state = store.getState() as Store
-  const priceA = getPrice(prevState)
-  const priceB = getPrice(state)
+  const priceA = selectPrice(prevState)
+  const priceB = selectPrice(state)
 
   if (priceA.ask === priceB.ask && priceA.bid === priceB.bid)
     return next(action)
 
   // start trading
-  const lastPosition = getLastPositionWithLevels(state)
-  const nextLevel = getNextLevel(state)
-  const distance = getPriceDistanceToPrevLevel(state)
+  const lastPosition = selectLastPositionWithLevels(state)
+  const nextLevel = selectNextLevel(state)
+  const distance = selectPriceDistanceToPrevLevel(state)
 
   if (lastPosition) {
     if (distance >= 0.7) {
@@ -76,7 +76,7 @@ const trading: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
     }
   } else {
     const lastPrice = selectLastPrice(state)
-    const positionProfit = getPositionProfit(state)
+    const positionProfit = selectPositionProfit(state)
 
     // close the position by TP
     if (nextLevel && !nextLevel.isDisabled) {

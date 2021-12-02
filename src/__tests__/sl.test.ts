@@ -1,12 +1,12 @@
-import store, {
-  changePrice,
-  getLastPosition,
+import store from '../store'
+import { initLevels } from '../store/levels'
+import {
+  selectLastPosition,
   resetPositions,
-  initLevels,
-  addTrend,
-  TrendDirection,
   ClosingRule,
-} from '../store'
+} from '../store/positions'
+import { changePrice } from '../store/price'
+import { addTrend, TrendDirection } from '../store/trends'
 
 describe('SL', () => {
   const levels = [1, 2, 3, 4].map((value) => ({
@@ -31,14 +31,14 @@ describe('SL', () => {
 
     // 1. Открываем позицию в лонг на уровне 2
     store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
-    const position1 = getLastPosition(store.getState())
+    const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: '2',
     })
 
     // 2. Цена падает на 50% до следующего уровня против тренда → SL
     store.dispatch(changePrice({ ask: 1.4, bid: 1.5 }))
-    const position2 = getLastPosition(store.getState())
+    const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: '2',
       isClosed: true,

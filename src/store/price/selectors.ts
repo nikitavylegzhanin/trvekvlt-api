@@ -1,24 +1,35 @@
-import { createSelector } from '@reduxjs/toolkit'
+import { createSelector, Selector } from '@reduxjs/toolkit'
+import { identity, path } from 'ramda'
 
 import { Price } from './reducer'
 import { Store } from '../store'
-import { getLastTrend, TrendDirection, Trend } from '../trends'
-import { getLastPositionWithLevels } from '../positions'
+import { selectLastTrend, TrendDirection, Trend } from '../trends'
+import { selectLastPositionWithLevels } from '../positions'
 
-const getState = (state: Store) => state
+const getState = path<Store['price']>(['price'])
 
-export const getPrice = createSelector(getState, (state) => state.price)
+export const selectPrice: Selector<Store, Price> = createSelector(
+  identity,
+  getState
+)
 
-export const getLastPrice = (price: Price, trend?: Trend) =>
-  trend?.direction === TrendDirection.UP ? price.bid : price.ask
+export const getLastPrice = (lastPrice: Price, lastTrend: Trend) =>
+  lastTrend?.direction === TrendDirection.UP ? lastPrice.bid : lastPrice.ask
 
-export const selectLastPrice = createSelector(
-  [getPrice, getLastTrend],
+export const selectLastPrice: Selector<Store, number> = createSelector(
+  [getState, selectLastTrend],
   getLastPrice
 )
 
-export const getPriceDistanceToPrevLevel = createSelector(
-  [selectLastPrice, getLastPositionWithLevels, (state) => state.levels],
+export const selectPriceDistanceToPrevLevel: Selector<
+  Store,
+  number
+> = createSelector(
+  [
+    selectLastPrice,
+    selectLastPositionWithLevels,
+    path<Store['levels']>(['levels']),
+  ],
   (lastPrice, lastPosition, levels) => {
     if (!lastPosition) return 0
 

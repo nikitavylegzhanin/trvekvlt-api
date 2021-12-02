@@ -1,10 +1,17 @@
-import { createSelector } from '@reduxjs/toolkit'
+import { createSelector, Selector } from '@reduxjs/toolkit'
+import { identity, path, findLast, T } from 'ramda'
 
+import { Trend } from './reducer'
 import { Store } from '../store'
 
-const getState = (state: Store) => state
+const getState = path<Store['trends']>(['trends'])
 
-export const getLastTrend = createSelector(
+export const selectTrends: Selector<Store, Trend[]> = createSelector(
+  identity,
+  getState
+)
+
+export const selectLastTrend: Selector<Store, Trend> = createSelector(
   getState,
-  (state) => state.trends.slice(-1)[0]
+  findLast<Trend>(T)
 )

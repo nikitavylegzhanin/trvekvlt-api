@@ -1,7 +1,9 @@
 import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
 import reduxDevTools from '@redux-devtools/cli'
 
-import store, { editConfig, changePrice } from './store'
+import store from './store'
+import { editConfig } from './store/config'
+import { changePrice } from './store/price'
 
 export const initApp = async () => {
   const { config } = store.getState()

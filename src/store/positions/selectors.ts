@@ -1,34 +1,55 @@
-import { createSelector } from '@reduxjs/toolkit'
+import { createSelector, Selector } from '@reduxjs/toolkit'
+import { identity, path, findLast, T, find, propEq } from 'ramda'
 
+import { Position } from './reducer'
 import { Store } from '../store'
+import { Level } from '../levels'
 import { getLastPrice } from '../price'
-import { getLastTrend, TrendDirection } from '../trends'
+import { selectLastTrend, TrendDirection } from '../trends'
 
-const getState = (state: Store) => state
+const getState = path<Store['positions']>(['positions'])
 
-export const getLastPosition = createSelector(
+export const selectPositions: Selector<Store, Position[]> = createSelector(
+  identity,
+  getState
+)
+
+export const selectLastPosition: Selector<Store, Position> = createSelector(
   getState,
-  (state) => state.positions.slice(-1)[0]
+  findLast<Position>(T)
 )
 
-export const getLastPositionWithLevels = createSelector(
-  [getLastPosition, (state) => state.levels],
-  (position, levels) =>
-    position
-      ? {
-          ...position,
-          openLevel: levels.find((level) => level.id === position.openLevelId),
-          closedLevel: levels.find(
-            (level) => level.id === position.closedLevelId
-          ),
-        }
-      : undefined
+type PositionWithLevels = Position & {
+  openLevel: Level
+  closedLevel?: Level
+}
+
+export const selectLastPositionWithLevels: Selector<
+  Store,
+  PositionWithLevels
+> = createSelector(
+  [selectLastPosition, path<Store['levels']>(['levels'])],
+  (position, levels) => {
+    if (!position) {
+      return undefined
+    }
+
+    return {
+      ...position,
+      openLevel: find<Level>(propEq('id', position.openLevelId), levels),
+      closedLevel: find<Level>(propEq('id', position.closedLevelId), levels),
+    }
+  }
 )
 
-export const getPositionProfit = createSelector(
-  [getLastPositionWithLevels, getLastTrend, (state) => state.price],
+export const selectPositionProfit: Selector<Store, number> = createSelector(
+  [
+    selectLastPositionWithLevels,
+    selectLastTrend,
+    path<Store['price']>(['price']),
+  ],
   (position, lastTrend, price) => {
-    const lastPrice = getLastPrice(price)
+    const lastPrice = getLastPrice(price, lastTrend)
 
     return lastTrend?.direction === TrendDirection.UP
       ? lastPrice - position.openLevel.value

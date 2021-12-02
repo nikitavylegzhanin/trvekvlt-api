@@ -1,13 +1,20 @@
-import { createSelector } from '@reduxjs/toolkit'
+import { createSelector, Selector } from '@reduxjs/toolkit'
+import { find, propEq, path, identity } from 'ramda'
 
+import { Level } from './reducer'
 import { Store } from '../store'
-import { selectLastPrice } from '../price'
+import { getLastPrice } from '../price'
+import { selectLastTrend } from '../trends'
 
-const getState = (state: Store) => state
+const getState = path<Store['levels']>(['levels'])
 
-export const getLevels = createSelector(getState, (state) => state.levels)
+export const selectLevels: Selector<Store, Level[]> = createSelector(
+  identity,
+  getState
+)
 
-export const getNextLevel = createSelector(
-  [getLevels, selectLastPrice],
-  (levels, lastPrice) => levels.find((level) => level.value === lastPrice)
+export const selectNextLevel: Selector<Store, Level> = createSelector(
+  [getState, path<Store['price']>(['price']), selectLastTrend],
+  (levels, price, lastTrend) =>
+    find<Level>(propEq('value', getLastPrice(price, lastTrend)), levels)
 )
