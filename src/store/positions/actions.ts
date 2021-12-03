@@ -20,7 +20,7 @@ export const openPosition = createAction<
   PositionsActionType.OPEN_POSITION
 >(PositionsActionType.OPEN_POSITION)
 
-type ClosePositionPayload = {
+export type ClosePositionPayload = {
   positionId: string
   closedLevelId?: string
   closedByRule: ClosingRule

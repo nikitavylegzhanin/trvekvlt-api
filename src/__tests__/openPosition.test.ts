@@ -21,7 +21,7 @@ describe('Открытие позиции в направлении тренда
   store.dispatch(addLevels(levels))
 
   test('по bid price для аптренда', () => {
-    store.dispatch(addTrend({ id: '1', direction: TrendDirection.UP }))
+    store.dispatch(addTrend({ direction: TrendDirection.UP }))
 
     // Изначально нет открытых позиций
     const positionA = selectLastPosition(store.getState())
@@ -36,7 +36,7 @@ describe('Открытие позиции в направлении тренда
   })
 
   test('по ask price для даунтрейда', () => {
-    store.dispatch(addTrend({ id: '2', direction: TrendDirection.DOWN }))
+    store.dispatch(addTrend({ direction: TrendDirection.DOWN }))
 
     const positionA = selectLastPosition(store.getState())
     expect(positionA).toBeUndefined()

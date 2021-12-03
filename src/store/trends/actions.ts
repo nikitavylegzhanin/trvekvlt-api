@@ -2,10 +2,16 @@ import { createAction } from '@reduxjs/toolkit'
 
 import { Trend } from './reducer'
 
-export enum TrendsActionTypes {
+export enum TrendsActionType {
   ADD_TREND = 'Trends/ADD_TREND',
 }
 
-export const addTrend = createAction<Trend, TrendsActionTypes.ADD_TREND>(
-  TrendsActionTypes.ADD_TREND
-)
+type AddTrendPayload = {
+  direction: Trend['direction']
+  isCorrection?: Trend['isCorrection']
+}
+
+export const addTrend = createAction<
+  AddTrendPayload,
+  TrendsActionType.ADD_TREND
+>(TrendsActionType.ADD_TREND)

@@ -17,7 +17,7 @@ export enum ClosingRule {
 export type Position = {
   id: string
   openLevelId: string
-  isClosed?: boolean
+  isClosed: boolean
   closedLevelId?: string
   closingRules: ClosingRule[]
   closedByRule?: ClosingRule
@@ -31,6 +31,7 @@ const reducer = createReducer<Position[]>([], (builder) =>
         ...action.payload,
         id: Math.random().toString(36),
         closingRules: [ClosingRule.SL, ClosingRule.TP],
+        isClosed: false,
       })
     )
     .addCase(closePosition, (state, action) =>

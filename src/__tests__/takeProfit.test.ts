@@ -26,7 +26,7 @@ describe('Take profit', () => {
     //    /   \/          | 2, 5
     // 2 /--------------- | 1
 
-    store.dispatch(addTrend({ id: '1', direction: TrendDirection.UP }))
+    store.dispatch(addTrend({ direction: TrendDirection.UP }))
 
     // 1. Открываем позицию в лонг на уровне 2
     store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
