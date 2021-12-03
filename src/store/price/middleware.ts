@@ -16,15 +16,14 @@ import {
   selectPositionProfit,
 } from '../positions'
 
-const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
+const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
   action: AnyAction
 ) => {
-  if (action.type !== PriceActionTypes.CHANGE_PRICE) return next(action)
+  const result = dispatch(action)
+  if (action.type !== PriceActionTypes.CHANGE_PRICE) return result
 
   // Process trading logic when price changes
-  const result = next(action)
   const state = store.getState() as Store
-
   const lastPosition = selectLastPositionWithLevels(state)
   const nextLevel = selectNextLevel(state)
   const distance = selectPriceDistanceToPrevLevel(state)
@@ -32,7 +31,7 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   if (lastPosition) {
     if (distance >= 0.7) {
       if (!lastPosition.closingRules.includes(ClosingRule.SLT_50PERCENT)) {
-        next(
+        dispatch(
           addPositionClosingRule({
             positionId: lastPosition.id,
             closingRule: ClosingRule.SLT_50PERCENT,
@@ -41,7 +40,7 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
       }
     } else if (distance >= 0.5) {
       if (!lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS)) {
-        next(
+        dispatch(
           addPositionClosingRule({
             positionId: lastPosition.id,
             closingRule: ClosingRule.SLT_3TICKS,
@@ -50,11 +49,11 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
       }
 
       if (lastPosition.openLevel?.isDisabled) {
-        next(enableLevel(lastPosition.openLevelId))
+        dispatch(enableLevel(lastPosition.openLevelId))
       }
 
       if (lastPosition.closedLevel?.isDisabled) {
-        next(enableLevel(lastPosition.closedLevelId))
+        dispatch(enableLevel(lastPosition.closedLevelId))
       }
     }
   }
@@ -62,10 +61,10 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
   if (!lastPosition || !!lastPosition.isClosed) {
     if (nextLevel && !nextLevel.isDisabled) {
       // open the position
-      next(openPosition({ openLevelId: nextLevel.id }))
+      dispatch(openPosition({ openLevelId: nextLevel.id }))
 
       // disable the open level
-      next(disableLevel(nextLevel.id))
+      dispatch(disableLevel(nextLevel.id))
     }
   } else {
     const lastPrice = selectLastPrice(state)
@@ -73,7 +72,7 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
 
     // close the position by TP
     if (nextLevel && !nextLevel.isDisabled) {
-      next(
+      dispatch(
         closePosition({
           positionId: lastPosition.id,
           closedLevelId: nextLevel.id,
@@ -82,40 +81,40 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (next) => (
       )
 
       // disable the closed level
-      next(disableLevel(nextLevel.id))
+      dispatch(disableLevel(nextLevel.id))
     } else if (
       lastPosition.closingRules.includes(ClosingRule.SLT_50PERCENT) &&
       distance <= 0.5
     ) {
       // close by SLT_50PERCENT
-      next(
+      dispatch(
         closePosition({
           positionId: lastPosition.id,
           closedByRule: ClosingRule.SLT_50PERCENT,
         })
       )
 
-      next(disableLevel(lastPosition.openLevelId))
+      dispatch(disableLevel(lastPosition.openLevelId))
     } else if (
       lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS) &&
       Math.abs(lastPosition.openLevel.value - lastPrice) <= 3
     ) {
       // close by SLT_3TICKS
-      next(
+      dispatch(
         closePosition({
           positionId: lastPosition.id,
           closedByRule: ClosingRule.SLT_3TICKS,
         })
       )
 
-      next(disableLevel(lastPosition.openLevelId))
+      dispatch(disableLevel(lastPosition.openLevelId))
     } else if (
       lastPosition.closingRules.includes(ClosingRule.SL) &&
       positionProfit < 0 &&
       distance >= 0.5
     ) {
       // close by SL
-      next(
+      dispatch(
         closePosition({
           positionId: lastPosition.id,
           closedByRule: ClosingRule.SL,
