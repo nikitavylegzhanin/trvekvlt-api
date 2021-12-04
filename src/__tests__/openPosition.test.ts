@@ -5,6 +5,8 @@ import { changePrice } from '../store/price'
 import { addTrend, TrendDirection } from '../store/trends'
 
 describe('Открытие позиции в направлении тренда', () => {
+  jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
+
   beforeEach(() => {
     store.dispatch(resetPositions())
     store.dispatch(changePrice({ ask: 0, bid: 0 }))

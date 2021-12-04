@@ -21,6 +21,8 @@ jest.mock('@tinkoff/invest-openapi-js-sdk', () =>
 )
 
 describe('Подписка на цены', () => {
+  jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
+
   it('сохраняет вверхние значения ask и bid при изменении', async () => {
     const api = await initApp()
 

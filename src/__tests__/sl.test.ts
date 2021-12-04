@@ -9,6 +9,8 @@ import { changePrice } from '../store/price'
 import { addTrend, TrendDirection } from '../store/trends'
 
 describe('SL', () => {
+  jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
+
   const levels = [1, 2, 3, 4, 5].map((value) => ({
     value,
     id: value.toString(),

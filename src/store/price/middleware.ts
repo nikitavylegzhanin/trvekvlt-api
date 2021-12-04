@@ -15,12 +15,18 @@ import {
   addPositionClosingRule,
   selectPositionProfit,
 } from '../positions'
+import { isTradingInterval } from './utils'
 
 const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
   action: AnyAction
 ) => {
   const result = dispatch(action)
-  if (action.type !== PriceActionTypes.CHANGE_PRICE) return result
+  if (
+    action.type !== PriceActionTypes.CHANGE_PRICE ||
+    !isTradingInterval(new Date())
+  ) {
+    return result
+  }
 
   // Process trading logic when price changes
   const state = store.getState() as Store

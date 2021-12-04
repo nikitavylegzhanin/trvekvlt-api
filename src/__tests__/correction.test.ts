@@ -5,6 +5,8 @@ import { addTrend, TrendDirection, selectLastTrend } from '../store/trends'
 import { selectLastPosition, ClosingRule } from '../store/positions'
 
 describe('Correction', () => {
+  jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
+
   const levels = [1, 2, 3].map((value) => ({
     value,
     id: value.toString(),
