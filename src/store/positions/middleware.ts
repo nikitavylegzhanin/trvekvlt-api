@@ -1,14 +1,22 @@
 import { Middleware, Dispatch, PayloadAction } from '@reduxjs/toolkit'
-import { pipe, filter, propEq, findLast, T, ifElse, always } from 'ramda'
+import {
+  pipe,
+  filter,
+  propEq,
+  findLast,
+  T,
+  ifElse,
+  always,
+  includes,
+  not,
+  __,
+} from 'ramda'
 
 import { Store } from '../store'
-import {
-  PositionsActionType,
-  ClosePositionPayload,
-  Position,
-  ClosingRule,
-} from './'
+import { Position, ClosingRule } from './'
+import { PositionsActionType, ClosePositionPayload } from './actions'
 import { selectPositions } from './selectors'
+import { selectConfig, editConfig } from '../config'
 import { addTrend, selectLastTrend, TrendDirection } from '../trends'
 
 const getLastClosedPosition = pipe(
@@ -26,24 +34,49 @@ const getCorrectionTrendDirection = pipe(
   )
 )
 
+const isNotMiddlewareAction = pipe(
+  includes(__, [
+    PositionsActionType.OPEN_POSITION,
+    PositionsActionType.CLOSE_POSITION,
+  ]),
+  not
+)
+
 const middleware: Middleware<Dispatch<PayloadAction>> = (store) => (
   dispatch
-) => (action: PayloadAction<ClosePositionPayload>) => {
-  if (action.type !== PositionsActionType.CLOSE_POSITION)
+) => (action: PayloadAction<ClosePositionPayload, PositionsActionType>) => {
+  if (isNotMiddlewareAction(action.type)) {
     return dispatch(action)
+  }
 
   const state = store.getState() as Store
 
-  if (action.payload.closedByRule === ClosingRule.SL) {
-    const lastClosedPosition = getLastClosedPosition(state)
+  if (action.type === PositionsActionType.OPEN_POSITION) {
+    const { isDisabled } = selectConfig(state)
 
-    if (lastClosedPosition?.closedByRule === ClosingRule.SL) {
-      // 2 SL consecutive → correction
-      const correctionTrendDirection = getCorrectionTrendDirection(state)
+    if (isDisabled) {
+      return dispatch
+    }
+  }
 
-      dispatch(
-        addTrend({ direction: correctionTrendDirection, isCorrection: true })
-      )
+  if (action.type === PositionsActionType.CLOSE_POSITION) {
+    if (action.payload.closedByRule === ClosingRule.SL) {
+      const lastClosedPosition = getLastClosedPosition(state)
+      const lastTrend = selectLastTrend(state)
+
+      if (lastTrend.isCorrection) {
+        // SL on correction → disable engine
+        dispatch(editConfig({ isDisabled: true }))
+      }
+
+      if (lastClosedPosition?.closedByRule === ClosingRule.SL) {
+        // 2 SL consecutive → correction
+        const correctionTrendDirection = getCorrectionTrendDirection(state)
+
+        dispatch(
+          addTrend({ direction: correctionTrendDirection, isCorrection: true })
+        )
+      }
     }
   }
 

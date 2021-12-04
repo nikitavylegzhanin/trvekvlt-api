@@ -10,10 +10,11 @@ const api = {
   socketURL: process.env.API_URL_WS,
 }
 
-export type EditableConfigParams = {
-  ticker?: string
-  figi?: string
-}
+export type EditableConfigParams = Partial<{
+  ticker: string
+  figi: string
+  isDisabled: boolean
+}>
 
 type Config = {
   api: typeof api
@@ -26,6 +27,7 @@ const initialState: Config = {
     socketURL: process.env.API_URL_WS,
   },
   ticker: process.env.TICKER,
+  isDisabled: false,
 }
 
 const reducer = createReducer(initialState, (builder) =>
