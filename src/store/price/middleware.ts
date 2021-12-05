@@ -21,16 +21,28 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
   action: AnyAction
 ) => {
   const result = dispatch(action)
-  if (
-    action.type !== PriceActionTypes.CHANGE_PRICE ||
-    !isTradingInterval(new Date())
-  ) {
+  if (action.type !== PriceActionTypes.CHANGE_PRICE) {
     return result
   }
 
   // Process trading logic when price changes
   const state = store.getState() as Store
   const lastPosition = selectLastPositionWithLevels(state)
+  const date = new Date()
+
+  if (!isTradingInterval(date)) {
+    if (lastPosition && !lastPosition.isClosed) {
+      dispatch(
+        closePosition({
+          positionId: lastPosition.id,
+          closedByRule: ClosingRule.MARKET_PHASE_END,
+        })
+      )
+    }
+
+    return result
+  }
+
   const nextLevel = selectNextLevel(state)
   const distance = selectPriceDistanceToPrevLevel(state)
 

@@ -95,7 +95,11 @@ describe('Take profit', () => {
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: '2',
-      closingRules: [ClosingRule.SL, ClosingRule.TP],
+      closingRules: [
+        ClosingRule.SL,
+        ClosingRule.TP,
+        ClosingRule.MARKET_PHASE_END,
+      ],
     })
 
     // 2. Цена поднимается на 50% от уровня открытия → уровень доступен для закрытия в 0
@@ -103,7 +107,12 @@ describe('Take profit', () => {
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: '2',
-      closingRules: [ClosingRule.SL, ClosingRule.TP, ClosingRule.SLT_3TICKS],
+      closingRules: [
+        ClosingRule.SL,
+        ClosingRule.TP,
+        ClosingRule.MARKET_PHASE_END,
+        ClosingRule.SLT_3TICKS,
+      ],
     })
 
     // 3. Возвращается на 3 тика до средней цены → закрываем позицию
@@ -136,7 +145,11 @@ describe('Take profit', () => {
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: '2',
-      closingRules: [ClosingRule.SL, ClosingRule.TP],
+      closingRules: [
+        ClosingRule.SL,
+        ClosingRule.TP,
+        ClosingRule.MARKET_PHASE_END,
+      ],
     })
 
     // 2. Цена поднимается на 70% от уровня открытия → доступено закрытие по правилу SLT_50PERCENT
@@ -144,7 +157,12 @@ describe('Take profit', () => {
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: '2',
-      closingRules: [ClosingRule.SL, ClosingRule.TP, ClosingRule.SLT_50PERCENT],
+      closingRules: [
+        ClosingRule.SL,
+        ClosingRule.TP,
+        ClosingRule.MARKET_PHASE_END,
+        ClosingRule.SLT_50PERCENT,
+      ],
     })
 
     // 3. Цена возвращается на 50% → закрываем позицию и блокируем открытый уровень

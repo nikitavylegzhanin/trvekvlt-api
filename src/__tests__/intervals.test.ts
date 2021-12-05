@@ -3,7 +3,7 @@ import { initLevels } from '../store/levels'
 import { resetPositions } from '../store/positions'
 import { changePrice } from '../store/price'
 import { addTrend, TrendDirection } from '../store/trends'
-import { selectLastPosition } from '../store/positions'
+import { selectLastPosition, selectPositions } from '../store/positions'
 
 describe('Intervals', () => {
   const levels = [1, 2, 3, 4, 5].map((value) => ({
@@ -20,11 +20,11 @@ describe('Intervals', () => {
 
   beforeEach(resetData)
 
-  test('обрабатывает торговую логику только в интервале рыночной фазы', () => {
-    store.dispatch(
-      addTrend({ direction: TrendDirection.UP, isCorrection: false })
-    )
+  store.dispatch(
+    addTrend({ direction: TrendDirection.UP, isCorrection: false })
+  )
 
+  test('обрабатывает торговую логику только в интервале рыночной фазы', () => {
     // 1. Пре-опен → не работает
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 49).getTime())
     store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
@@ -47,5 +47,23 @@ describe('Intervals', () => {
     store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
     const lastPosition3 = selectLastPosition(store.getState())
     expect(lastPosition3).toBeUndefined()
+  })
+
+  test('закрывает позицию и обнуляет историю по окончании рыночной фазы', () => {
+    // 1. Открываем позицию
+    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
+    store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
+    const lastPosition1 = selectLastPosition(store.getState())
+    expect(lastPosition1).toMatchObject<Partial<typeof lastPosition1>>({
+      openLevelId: '2',
+    })
+    const positions1 = selectPositions(store.getState())
+    expect(positions1).toHaveLength(1)
+
+    // 2. По окончании рыночной фазы закрываем и обнуляем позиции
+    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 23).getTime())
+    store.dispatch(changePrice({ ask: 2, bid: 2.1 }))
+    const positions2 = selectPositions(store.getState())
+    expect(positions2).toHaveLength(0)
   })
 })

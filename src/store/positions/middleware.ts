@@ -14,7 +14,11 @@ import {
 
 import { Store } from '../store'
 import { Position, ClosingRule } from './'
-import { PositionsActionType, ClosePositionPayload } from './actions'
+import {
+  PositionsActionType,
+  ClosePositionPayload,
+  resetPositions,
+} from './actions'
 import { selectPositions } from './selectors'
 import { selectConfig, editConfig } from '../config'
 import { addTrend, selectLastTrend, TrendDirection } from '../trends'
@@ -60,6 +64,10 @@ const middleware: Middleware<Dispatch<PayloadAction>> = (store) => (
   }
 
   if (action.type === PositionsActionType.CLOSE_POSITION) {
+    if (action.payload.closedByRule === ClosingRule.MARKET_PHASE_END) {
+      dispatch(resetPositions())
+    }
+
     if (action.payload.closedByRule === ClosingRule.SL) {
       const lastClosedPosition = getLastClosedPosition(state)
       const lastTrend = selectLastTrend(state)

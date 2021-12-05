@@ -12,6 +12,7 @@ export enum ClosingRule {
   TP,
   SLT_3TICKS,
   SLT_50PERCENT,
+  MARKET_PHASE_END,
 }
 
 export type Position = {
@@ -23,6 +24,12 @@ export type Position = {
   closedByRule?: ClosingRule
 }
 
+const defaultClosingRules = [
+  ClosingRule.SL,
+  ClosingRule.TP,
+  ClosingRule.MARKET_PHASE_END,
+]
+
 const reducer = createReducer<Position[]>([], (builder) =>
   builder
     .addCase(resetPositions, () => [])
@@ -30,7 +37,7 @@ const reducer = createReducer<Position[]>([], (builder) =>
       state.concat({
         ...action.payload,
         id: Math.random().toString(36),
-        closingRules: [ClosingRule.SL, ClosingRule.TP],
+        closingRules: defaultClosingRules,
         isClosed: false,
       })
     )
