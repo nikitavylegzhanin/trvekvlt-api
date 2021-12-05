@@ -6,7 +6,12 @@ import {
   selectPriceDistanceToPrevLevel,
   selectLastPrice,
 } from './'
-import { selectNextLevel, disableLevel, enableLevel } from '../levels'
+import {
+  selectNextLevel,
+  disableLevel,
+  enableLevel,
+  selectLevels,
+} from '../levels'
 import {
   openPosition,
   closePosition,
@@ -16,7 +21,7 @@ import {
   selectPositionProfit,
 } from '../positions'
 import { selectConfig, editConfig } from '../config'
-import { isTradingInterval } from './utils'
+import { isTradingInterval, isLastLevel } from './utils'
 
 const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
   action: AnyAction
@@ -83,7 +88,13 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
   }
 
   if (!lastPosition || !!lastPosition.isClosed) {
-    if (nextLevel && !nextLevel.isDisabled) {
+    const levels = selectLevels(state)
+
+    if (
+      nextLevel &&
+      !nextLevel.isDisabled &&
+      !isLastLevel(nextLevel.id, levels)
+    ) {
       // open the position
       dispatch(openPosition({ openLevelId: nextLevel.id }))
 

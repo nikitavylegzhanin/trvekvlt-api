@@ -12,9 +12,9 @@ describe('Открытие позиции в направлении тренда
     store.dispatch(changePrice({ ask: 0, bid: 0 }))
   })
 
-  const bid = 1
-  const ask = 2
-  const levels = [bid, ask, 3].map((value) => ({
+  const bid = 2
+  const ask = 3
+  const levels = [1, bid, ask, 4, 5].map((value) => ({
     value,
     id: value.toString(),
     isDisabled: false,
@@ -51,10 +51,24 @@ describe('Открытие позиции в направлении тренда
     })
 
     // Только одна открытая заявка
-    store.dispatch(changePrice({ ask: 3, bid }))
+    store.dispatch(changePrice({ ask: 4, bid }))
     const positionC = selectLastPosition(store.getState())
     expect(positionC).toMatchObject<Partial<typeof positionC>>({
       openLevelId: levels.find(({ value }) => value === ask).id,
     })
+  })
+
+  test('не открывает крайние уровни', () => {
+    store.dispatch(addTrend({ direction: TrendDirection.UP }))
+
+    // Верхний уровень
+    store.dispatch(changePrice({ ask: 4.9, bid: 5 }))
+    const position1 = selectLastPosition(store.getState())
+    expect(position1).toBeUndefined()
+
+    // Нижний уровень
+    store.dispatch(changePrice({ ask: 0.9, bid: 1 }))
+    const position2 = selectLastPosition(store.getState())
+    expect(position2).toBeUndefined()
   })
 })

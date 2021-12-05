@@ -77,11 +77,11 @@ describe('Intervals', () => {
 
     // Market closed
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 23, 10).getTime())
-    store.dispatch(changePrice({ ask: 1, bid: 1.1 }))
+    store.dispatch(changePrice({ ask: 2.3, bid: 2.4 }))
 
     // 2. На следующий день - включен
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
-    changePrice({ ask: 0.9, bid: 1 })
+    changePrice({ ask: 2.2, bid: 2.3 })
     const config2 = selectConfig(store.getState())
     expect(config2).toMatchObject<Partial<typeof config2>>({
       isDisabled: false,
