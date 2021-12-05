@@ -4,6 +4,7 @@ import { resetPositions } from '../store/positions'
 import { changePrice } from '../store/price'
 import { addTrend, TrendDirection } from '../store/trends'
 import { selectLastPosition, selectPositions } from '../store/positions'
+import { editConfig, selectConfig } from '../store/config'
 
 describe('Intervals', () => {
   const levels = [1, 2, 3, 4, 5].map((value) => ({
@@ -65,5 +66,25 @@ describe('Intervals', () => {
     store.dispatch(changePrice({ ask: 2, bid: 2.1 }))
     const positions2 = selectPositions(store.getState())
     expect(positions2).toHaveLength(0)
+  })
+
+  test('сбрасывает ограничения по окончании рыночной фазы', () => {
+    // 1. Дисейблим во время ос
+    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
+    store.dispatch(editConfig({ isDisabled: true }))
+    const config1 = selectConfig(store.getState())
+    expect(config1).toMatchObject<Partial<typeof config1>>({ isDisabled: true })
+
+    // Market closed
+    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 23, 10).getTime())
+    store.dispatch(changePrice({ ask: 1, bid: 1.1 }))
+
+    // 2. На следующий день - включен
+    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
+    changePrice({ ask: 0.9, bid: 1 })
+    const config2 = selectConfig(store.getState())
+    expect(config2).toMatchObject<Partial<typeof config2>>({
+      isDisabled: false,
+    })
   })
 })

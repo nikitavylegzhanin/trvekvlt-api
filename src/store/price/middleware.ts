@@ -15,6 +15,7 @@ import {
   addPositionClosingRule,
   selectPositionProfit,
 } from '../positions'
+import { selectConfig, editConfig } from '../config'
 import { isTradingInterval } from './utils'
 
 const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
@@ -27,6 +28,7 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
 
   // Process trading logic when price changes
   const state = store.getState() as Store
+  const config = selectConfig(state)
   const lastPosition = selectLastPositionWithLevels(state)
   const date = new Date()
 
@@ -38,6 +40,10 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
           closedByRule: ClosingRule.MARKET_PHASE_END,
         })
       )
+    }
+
+    if (config.isDisabled) {
+      dispatch(editConfig({ isDisabled: false }))
     }
 
     return result
