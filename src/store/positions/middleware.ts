@@ -13,7 +13,7 @@ import {
 } from 'ramda'
 
 import { Store } from '../store'
-import { Position, ClosingRule } from './'
+import { StoredPosition } from './'
 import {
   PositionsActionType,
   ClosePositionPayload,
@@ -21,12 +21,14 @@ import {
 } from './actions'
 import { selectPositions } from './selectors'
 import { selectConfig, editConfig } from '../config'
-import { addTrend, selectLastTrend, TrendDirection } from '../trends'
+import { addTrend, selectLastTrend } from '../trends'
+import { TrendDirection, TrendType } from '../../db/Trend'
+import { PositionClosingRule } from '../../db/Position'
 
 const getLastClosedPosition = pipe(
   selectPositions,
-  filter<Position>(propEq('isClosed', true)),
-  findLast<Position>(T)
+  filter<StoredPosition>((position) => position.closedByRule !== undefined),
+  findLast<StoredPosition>(T)
 )
 
 const getCorrectionTrendDirection = pipe(
@@ -64,25 +66,28 @@ const middleware: Middleware<Dispatch<PayloadAction>> = (store) => (
   }
 
   if (action.type === PositionsActionType.CLOSE_POSITION) {
-    if (action.payload.closedByRule === ClosingRule.MARKET_PHASE_END) {
+    if (action.payload.closedByRule === PositionClosingRule.MARKET_PHASE_END) {
       dispatch(resetPositions())
     }
 
-    if (action.payload.closedByRule === ClosingRule.SL) {
+    if (action.payload.closedByRule === PositionClosingRule.SL) {
       const lastClosedPosition = getLastClosedPosition(state)
       const lastTrend = selectLastTrend(state)
 
-      if (lastTrend.isCorrection) {
+      if (lastTrend.type === TrendType.CORRECTION) {
         // SL on correction → disable engine
         dispatch(editConfig({ isDisabled: true }))
       }
 
-      if (lastClosedPosition?.closedByRule === ClosingRule.SL) {
+      if (lastClosedPosition?.closedByRule === PositionClosingRule.SL) {
         // 2 SL consecutive → correction
         const correctionTrendDirection = getCorrectionTrendDirection(state)
 
         dispatch(
-          addTrend({ direction: correctionTrendDirection, isCorrection: true })
+          addTrend({
+            direction: correctionTrendDirection,
+            type: TrendType.CORRECTION,
+          })
         )
       }
     }

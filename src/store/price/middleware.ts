@@ -15,11 +15,11 @@ import {
 import {
   openPosition,
   closePosition,
-  ClosingRule,
   selectLastPositionWithLevels,
   addPositionClosingRule,
   selectPositionProfit,
 } from '../positions'
+import { PositionClosingRule } from '../../db/Position'
 import { selectConfig, editConfig } from '../config'
 import { isTradingInterval, isLastLevel } from './utils'
 
@@ -38,11 +38,11 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
   const date = new Date()
 
   if (!isTradingInterval(date)) {
-    if (lastPosition && !lastPosition.isClosed) {
+    if (lastPosition && !lastPosition.closedByRule) {
       dispatch(
         closePosition({
           positionId: lastPosition.id,
-          closedByRule: ClosingRule.MARKET_PHASE_END,
+          closedByRule: PositionClosingRule.MARKET_PHASE_END,
         })
       )
     }
@@ -59,20 +59,22 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
 
   if (lastPosition) {
     if (distance >= 0.7) {
-      if (!lastPosition.closingRules.includes(ClosingRule.SLT_50PERCENT)) {
+      if (
+        !lastPosition.closingRules.includes(PositionClosingRule.SLT_50PERCENT)
+      ) {
         dispatch(
           addPositionClosingRule({
             positionId: lastPosition.id,
-            closingRule: ClosingRule.SLT_50PERCENT,
+            closingRule: PositionClosingRule.SLT_50PERCENT,
           })
         )
       }
     } else if (distance >= 0.5) {
-      if (!lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS)) {
+      if (!lastPosition.closingRules.includes(PositionClosingRule.SLT_3TICKS)) {
         dispatch(
           addPositionClosingRule({
             positionId: lastPosition.id,
-            closingRule: ClosingRule.SLT_3TICKS,
+            closingRule: PositionClosingRule.SLT_3TICKS,
           })
         )
       }
@@ -87,7 +89,7 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
     }
   }
 
-  if (!lastPosition || !!lastPosition.isClosed) {
+  if (!lastPosition || lastPosition.closedByRule !== undefined) {
     const levels = selectLevels(state)
 
     if (
@@ -111,40 +113,40 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
         closePosition({
           positionId: lastPosition.id,
           closedLevelId: nextLevel.id,
-          closedByRule: ClosingRule.TP,
+          closedByRule: PositionClosingRule.TP,
         })
       )
 
       // disable the closed level
       dispatch(disableLevel(nextLevel.id))
     } else if (
-      lastPosition.closingRules.includes(ClosingRule.SLT_50PERCENT) &&
+      lastPosition.closingRules.includes(PositionClosingRule.SLT_50PERCENT) &&
       distance <= 0.5
     ) {
       // close by SLT_50PERCENT
       dispatch(
         closePosition({
           positionId: lastPosition.id,
-          closedByRule: ClosingRule.SLT_50PERCENT,
+          closedByRule: PositionClosingRule.SLT_50PERCENT,
         })
       )
 
       dispatch(disableLevel(lastPosition.openLevelId))
     } else if (
-      lastPosition.closingRules.includes(ClosingRule.SLT_3TICKS) &&
+      lastPosition.closingRules.includes(PositionClosingRule.SLT_3TICKS) &&
       Math.abs(lastPosition.openLevel.value - lastPrice) <= 3
     ) {
       // close by SLT_3TICKS
       dispatch(
         closePosition({
           positionId: lastPosition.id,
-          closedByRule: ClosingRule.SLT_3TICKS,
+          closedByRule: PositionClosingRule.SLT_3TICKS,
         })
       )
 
       dispatch(disableLevel(lastPosition.openLevelId))
     } else if (
-      lastPosition.closingRules.includes(ClosingRule.SL) &&
+      lastPosition.closingRules.includes(PositionClosingRule.SL) &&
       positionProfit < 0 &&
       distance >= 0.5
     ) {
@@ -152,7 +154,7 @@ const middleware: Middleware<Dispatch<AnyAction>> = (store) => (dispatch) => (
       dispatch(
         closePosition({
           positionId: lastPosition.id,
-          closedByRule: ClosingRule.SL,
+          closedByRule: PositionClosingRule.SL,
         })
       )
     }

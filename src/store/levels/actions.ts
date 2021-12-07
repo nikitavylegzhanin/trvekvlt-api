@@ -1,6 +1,6 @@
 import { createAction } from '@reduxjs/toolkit'
 
-import { Level } from './reducer'
+import { StoredLevel } from './reducer'
 
 export enum LevelsActionType {
   INIT_LEVELS = 'Levels/RESET_LEVELS',
@@ -9,19 +9,21 @@ export enum LevelsActionType {
   ENABLE_LEVEL = 'Levels/ENABLE_LEVEL',
 }
 
-export const initLevels = createAction<Level[], LevelsActionType.INIT_LEVELS>(
+export const initLevels = createAction<
+  StoredLevel[],
   LevelsActionType.INIT_LEVELS
-)
+>(LevelsActionType.INIT_LEVELS)
 
-export const addLevels = createAction<Level[], LevelsActionType.ADD_LEVELS>(
+export const addLevels = createAction<
+  StoredLevel[],
   LevelsActionType.ADD_LEVELS
-)
+>(LevelsActionType.ADD_LEVELS)
 
 export const disableLevel = createAction<
-  Level['id'],
+  StoredLevel['id'],
   LevelsActionType.DISABLE_LEVEL
 >(LevelsActionType.DISABLE_LEVEL)
 export const enableLevel = createAction<
-  Level['id'],
+  StoredLevel['id'],
   LevelsActionType.ENABLE_LEVEL
 >(LevelsActionType.ENABLE_LEVEL)

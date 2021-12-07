@@ -3,7 +3,8 @@ import { identity, path } from 'ramda'
 
 import { Price } from './reducer'
 import { Store } from '../store'
-import { getLastTrend, TrendDirection, Trend } from '../trends'
+import { getLastTrend, StoredTrend } from '../trends'
+import { TrendDirection } from '../../db/Trend'
 import { getLastPosition, getLastPositionWithLevels } from '../positions'
 
 const getState = path<Store['price']>(['price'])
@@ -13,7 +14,7 @@ export const selectPrice: Selector<Store, Price> = createSelector(
   getState
 )
 
-export const getLastPrice = (price: Price, lastTrend: Trend) =>
+export const getLastPrice = (price: Price, lastTrend: StoredTrend) =>
   lastTrend?.direction === TrendDirection.UP ? price.bid : price.ask
 export const selectLastPrice: Selector<Store, number> = createSelector(
   [getState, path<Store['trends']>(['trends'])],

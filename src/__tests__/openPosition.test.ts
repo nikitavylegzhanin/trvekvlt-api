@@ -2,7 +2,8 @@ import store from '../store'
 import { addLevels } from '../store/levels'
 import { selectLastPosition, resetPositions } from '../store/positions'
 import { changePrice } from '../store/price'
-import { addTrend, TrendDirection } from '../store/trends'
+import { addTrend } from '../store/trends'
+import { TrendDirection, TrendType } from '../db/Trend'
 
 describe('Открытие позиции в направлении тренда', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
@@ -16,14 +17,16 @@ describe('Открытие позиции в направлении тренда
   const ask = 3
   const levels = [1, bid, ask, 4, 5].map((value) => ({
     value,
-    id: value.toString(),
+    id: value,
     isDisabled: false,
   }))
 
   store.dispatch(addLevels(levels))
 
   test('по bid price для аптренда', () => {
-    store.dispatch(addTrend({ direction: TrendDirection.UP }))
+    store.dispatch(
+      addTrend({ direction: TrendDirection.UP, type: TrendType.MANUAL })
+    )
 
     // Изначально нет открытых позиций
     const positionA = selectLastPosition(store.getState())
@@ -38,7 +41,9 @@ describe('Открытие позиции в направлении тренда
   })
 
   test('по ask price для даунтрейда', () => {
-    store.dispatch(addTrend({ direction: TrendDirection.DOWN }))
+    store.dispatch(
+      addTrend({ direction: TrendDirection.DOWN, type: TrendType.MANUAL })
+    )
 
     const positionA = selectLastPosition(store.getState())
     expect(positionA).toBeUndefined()
@@ -59,7 +64,9 @@ describe('Открытие позиции в направлении тренда
   })
 
   test('не открывает крайние уровни', () => {
-    store.dispatch(addTrend({ direction: TrendDirection.UP }))
+    store.dispatch(
+      addTrend({ direction: TrendDirection.UP, type: TrendType.MANUAL })
+    )
 
     // Верхний уровень
     store.dispatch(changePrice({ ask: 4.9, bid: 5 }))

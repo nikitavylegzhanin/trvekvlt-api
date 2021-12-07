@@ -2,14 +2,15 @@ import store from '../store'
 import { initLevels } from '../store/levels'
 import { resetPositions } from '../store/positions'
 import { changePrice } from '../store/price'
-import { addTrend, TrendDirection } from '../store/trends'
+import { addTrend } from '../store/trends'
+import { TrendDirection, TrendType } from '../db/Trend'
 import { selectLastPosition, selectPositions } from '../store/positions'
 import { editConfig, selectConfig } from '../store/config'
 
 describe('Intervals', () => {
   const levels = [1, 2, 3, 4, 5].map((value) => ({
     value,
-    id: value.toString(),
+    id: value,
     isDisabled: false,
   }))
 
@@ -22,7 +23,7 @@ describe('Intervals', () => {
   beforeEach(resetData)
 
   store.dispatch(
-    addTrend({ direction: TrendDirection.UP, isCorrection: false })
+    addTrend({ direction: TrendDirection.UP, type: TrendType.MANUAL })
   )
 
   test('обрабатывает торговую логику только в интервале рыночной фазы', () => {
@@ -36,9 +37,7 @@ describe('Intervals', () => {
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
     store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
     const lastPosition2 = selectLastPosition(store.getState())
-    expect(lastPosition2).toMatchObject<Partial<typeof lastPosition2>>({
-      openLevelId: '2',
-    })
+    expect(lastPosition2.openLevelId).toBe(2)
 
     // Reset data
     resetData()
@@ -55,9 +54,7 @@ describe('Intervals', () => {
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
     store.dispatch(changePrice({ ask: 1.9, bid: 2 }))
     const lastPosition1 = selectLastPosition(store.getState())
-    expect(lastPosition1).toMatchObject<Partial<typeof lastPosition1>>({
-      openLevelId: '2',
-    })
+    expect(lastPosition1.openLevelId).toBe(2)
     const positions1 = selectPositions(store.getState())
     expect(positions1).toHaveLength(1)
 
@@ -73,7 +70,7 @@ describe('Intervals', () => {
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
     store.dispatch(editConfig({ isDisabled: true }))
     const config1 = selectConfig(store.getState())
-    expect(config1).toMatchObject<Partial<typeof config1>>({ isDisabled: true })
+    expect(config1.isDisabled).toBeTruthy()
 
     // Market closed
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 23, 10).getTime())
@@ -83,8 +80,6 @@ describe('Intervals', () => {
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 17, 50).getTime())
     changePrice({ ask: 2.2, bid: 2.3 })
     const config2 = selectConfig(store.getState())
-    expect(config2).toMatchObject<Partial<typeof config2>>({
-      isDisabled: false,
-    })
+    expect(config2.isDisabled).toBeFalsy()
   })
 })

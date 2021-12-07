@@ -6,45 +6,29 @@ import {
   closePosition,
   addPositionClosingRule,
 } from './actions'
+import { Position, DEFAULT_CLOSING_RULES } from '../../db'
 
-export enum ClosingRule {
-  SL,
-  TP,
-  SLT_3TICKS,
-  SLT_50PERCENT,
-  MARKET_PHASE_END,
+export type StoredPosition = {
+  id: Position['id']
+  closingRules: Position['closingRules']
+  openLevelId: number
+  closedByRule?: Position['closedByRule']
+  closedLevelId?: number
 }
 
-export type Position = {
-  id: string
-  openLevelId: string
-  isClosed: boolean
-  closedLevelId?: string
-  closingRules: ClosingRule[]
-  closedByRule?: ClosingRule
-}
-
-const defaultClosingRules = [
-  ClosingRule.SL,
-  ClosingRule.TP,
-  ClosingRule.MARKET_PHASE_END,
-]
-
-const reducer = createReducer<Position[]>([], (builder) =>
+const reducer = createReducer<StoredPosition[]>([], (builder) =>
   builder
     .addCase(resetPositions, () => [])
     .addCase(openPosition, (state, action) =>
       state.concat({
         ...action.payload,
-        id: Math.random().toString(36),
-        closingRules: defaultClosingRules,
-        isClosed: false,
+        id: 0,
+        closingRules: DEFAULT_CLOSING_RULES,
       })
     )
     .addCase(closePosition, (state, action) =>
       state.map((position) => ({
         ...position,
-        isClosed: position.id === action.payload.positionId,
         closedLevelId: action.payload.closedLevelId,
         closedByRule: action.payload.closedByRule,
       }))

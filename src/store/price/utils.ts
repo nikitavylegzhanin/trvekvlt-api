@@ -1,4 +1,4 @@
-import { Level } from '../levels/reducer'
+import { StoredLevel } from '../levels/reducer'
 
 type MarketPhaseInterval = [number, number, number, number]
 
@@ -17,7 +17,10 @@ export const isTradingInterval = (date: Date) => {
   return time >= startTime && time <= endTime
 }
 
-export const isLastLevel = (levelId: string, levels: Level[]) => {
+export const isLastLevel = (
+  levelId: StoredLevel['id'],
+  levels: StoredLevel[]
+) => {
   const sortedLevels = [...levels].sort((a, b) => a.value - b.value)
   const levelIndex = sortedLevels.findIndex(({ id }) => id === levelId)
 

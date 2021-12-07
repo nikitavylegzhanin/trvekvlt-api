@@ -1,14 +1,15 @@
 import { createReducer } from '@reduxjs/toolkit'
 
 import { initLevels, addLevels, disableLevel, enableLevel } from './actions'
+import { Level } from '../../db'
 
-export type Level = {
-  id: string
-  value: number
-  isDisabled: boolean
+export type StoredLevel = {
+  id: Level['id']
+  value: Level['value']
+  isDisabled?: boolean
 }
 
-const reducer = createReducer<Level[]>([], (builder) =>
+const reducer = createReducer<StoredLevel[]>([], (builder) =>
   builder
     .addCase(initLevels, (_, action) => action.payload)
     .addCase(addLevels, (state, action) => state.concat(action.payload))

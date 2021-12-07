@@ -1,23 +1,19 @@
-import { createReducer, nanoid } from '@reduxjs/toolkit'
+import { createReducer } from '@reduxjs/toolkit'
 
 import { addTrend } from './actions'
+import { Trend } from '../../db/Trend'
 
-export enum TrendDirection {
-  UP,
-  DOWN,
+export type StoredTrend = {
+  id: Trend['id']
+  direction: Trend['direction']
+  type: Trend['type']
 }
 
-export type Trend = {
-  id: string
-  direction: TrendDirection
-  isCorrection?: boolean
-}
-
-const reducer = createReducer<Trend[]>([], (builder) =>
+const reducer = createReducer<StoredTrend[]>([], (builder) =>
   builder.addCase(addTrend, (state, action) =>
     state.concat({
       ...action.payload,
-      id: nanoid(),
+      id: 0,
     })
   )
 )

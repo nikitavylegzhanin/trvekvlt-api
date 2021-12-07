@@ -1,33 +1,34 @@
 import { createSelector, Selector } from '@reduxjs/toolkit'
 import { identity, path, findLast, T, find, propEq } from 'ramda'
 
-import { Position } from './reducer'
+import { StoredPosition } from './reducer'
 import { Store } from '../store'
-import { Level } from '../levels'
+import { StoredLevel } from '../levels'
 import { getLastPrice } from '../price'
-import { getLastTrend, TrendDirection } from '../trends'
+import { getLastTrend } from '../trends'
+import { TrendDirection } from '../../db/Trend'
 
 const getState = path<Store['positions']>(['positions'])
 
-export const selectPositions: Selector<Store, Position[]> = createSelector(
-  identity,
-  getState
-)
+export const selectPositions: Selector<
+  Store,
+  StoredPosition[]
+> = createSelector(identity, getState)
 
-export const getLastPosition = findLast<Position>(T)
-export const selectLastPosition: Selector<Store, Position> = createSelector(
-  getState,
-  getLastPosition
-)
+export const getLastPosition = findLast<StoredPosition>(T)
+export const selectLastPosition: Selector<
+  Store,
+  StoredPosition
+> = createSelector(getState, getLastPosition)
 
-type PositionWithLevels = Position & {
-  openLevel: Level
-  closedLevel?: Level
+type PositionWithLevels = StoredPosition & {
+  openLevel: StoredLevel
+  closedLevel?: StoredLevel
 }
 
 export const getLastPositionWithLevels = (
-  position: Position,
-  levels: Level[]
+  position: StoredPosition,
+  levels: StoredLevel[]
 ) => {
   if (!position) {
     return undefined
@@ -35,8 +36,11 @@ export const getLastPositionWithLevels = (
 
   return {
     ...position,
-    openLevel: find<Level>(propEq('id', position.openLevelId), levels),
-    closedLevel: find<Level>(propEq('id', position.closedLevelId), levels),
+    openLevel: find<StoredLevel>(propEq('id', position.openLevelId), levels),
+    closedLevel: find<StoredLevel>(
+      propEq('id', position.closedLevelId),
+      levels
+    ),
   }
 }
 

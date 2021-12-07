@@ -1,6 +1,6 @@
 import { createAction } from '@reduxjs/toolkit'
 
-import { ClosingRule } from './reducer'
+import { PositionClosingRule } from '../../db'
 
 export enum PositionsActionType {
   RESET_POSITIONS = 'Positions/RESET_POSITIONS',
@@ -12,7 +12,7 @@ export enum PositionsActionType {
 export const resetPositions = createAction(PositionsActionType.RESET_POSITIONS)
 
 type OpenPositionPayload = {
-  openLevelId: string
+  openLevelId: number
 }
 
 export const openPosition = createAction<
@@ -21,9 +21,9 @@ export const openPosition = createAction<
 >(PositionsActionType.OPEN_POSITION)
 
 export type ClosePositionPayload = {
-  positionId: string
-  closedLevelId?: string
-  closedByRule: ClosingRule
+  positionId: number
+  closedLevelId?: number
+  closedByRule: PositionClosingRule
 }
 
 export const closePosition = createAction<
@@ -32,8 +32,8 @@ export const closePosition = createAction<
 >(PositionsActionType.CLOSE_POSITION)
 
 type AddPositionClosingRulePayload = {
-  positionId: string
-  closingRule: ClosingRule
+  positionId: number
+  closingRule: PositionClosingRule
 }
 
 export const addPositionClosingRule = createAction<
