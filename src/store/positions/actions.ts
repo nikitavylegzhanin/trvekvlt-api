@@ -1,15 +1,19 @@
 import { createAction } from '@reduxjs/toolkit'
 
+import { StoredPosition } from './reducer'
 import { PositionClosingRule } from '../../db'
 
 export enum PositionsActionType {
-  RESET_POSITIONS = 'Positions/RESET_POSITIONS',
+  INIT_POSITIONS = 'Positions/INIT_POSITIONS',
   OPEN_POSITION = 'Positions/OPEN_POSITION',
   CLOSE_POSITION = 'Positions/CLOSE_POSITION',
   ADD_POSITION_CLOSING_RULE = 'Positions/ADD_POSITION_CLOSING_RULE',
 }
 
-export const resetPositions = createAction(PositionsActionType.RESET_POSITIONS)
+export const initPositions = createAction<
+  StoredPosition[],
+  PositionsActionType.INIT_POSITIONS
+>(PositionsActionType.INIT_POSITIONS)
 
 type OpenPositionPayload = {
   openLevelId: number

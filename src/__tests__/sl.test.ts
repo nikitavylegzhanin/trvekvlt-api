@@ -1,6 +1,6 @@
 import store from '../store'
 import { initLevels } from '../store/levels'
-import { selectLastPosition, resetPositions } from '../store/positions'
+import { selectLastPosition, initPositions } from '../store/positions'
 import { PositionClosingRule } from '../db/Position'
 import { changePrice } from '../store/price'
 import { addTrend } from '../store/trends'
@@ -16,7 +16,7 @@ describe('SL', () => {
   }))
 
   beforeEach(() => {
-    store.dispatch(resetPositions())
+    store.dispatch(initPositions([]))
     store.dispatch(changePrice({ ask: 0, bid: 0 }))
     store.dispatch(initLevels(levels))
   })

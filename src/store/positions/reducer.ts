@@ -1,7 +1,7 @@
 import { createReducer } from '@reduxjs/toolkit'
 
 import {
-  resetPositions,
+  initPositions,
   openPosition,
   closePosition,
   addPositionClosingRule,
@@ -18,7 +18,7 @@ export type StoredPosition = {
 
 const reducer = createReducer<StoredPosition[]>([], (builder) =>
   builder
-    .addCase(resetPositions, () => [])
+    .addCase(initPositions, (_, action) => action.payload)
     .addCase(openPosition, (state, action) =>
       state.concat({
         ...action.payload,

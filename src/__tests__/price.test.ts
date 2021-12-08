@@ -1,3 +1,4 @@
+import db from '../db'
 import store from '../store'
 import { selectPrice } from '../store/price'
 import { initApp, subscribePrice } from '../app'
@@ -24,7 +25,8 @@ describe('Подписка на цены', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
   it('сохраняет вверхние значения ask и bid при изменении', async () => {
-    const api = await initApp()
+    const connection = await db.connect()
+    const api = await initApp(connection)
 
     const priceA = selectPrice(store.getState())
     expect(priceA).toMatchObject<typeof priceA>({ ask: 0, bid: 0 })

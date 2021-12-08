@@ -1,6 +1,6 @@
 import store from '../store'
 import { addLevels } from '../store/levels'
-import { selectLastPosition, resetPositions } from '../store/positions'
+import { selectLastPosition, initPositions } from '../store/positions'
 import { changePrice } from '../store/price'
 import { addTrend } from '../store/trends'
 import { TrendDirection, TrendType } from '../db/Trend'
@@ -9,7 +9,7 @@ describe('Открытие позиции в направлении тренда
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
   beforeEach(() => {
-    store.dispatch(resetPositions())
+    store.dispatch(initPositions([]))
     store.dispatch(changePrice({ ask: 0, bid: 0 }))
   })
 

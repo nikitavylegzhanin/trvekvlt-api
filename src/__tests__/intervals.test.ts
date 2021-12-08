@@ -1,6 +1,6 @@
 import store from '../store'
 import { initLevels } from '../store/levels'
-import { resetPositions } from '../store/positions'
+import { initPositions } from '../store/positions'
 import { changePrice } from '../store/price'
 import { addTrend } from '../store/trends'
 import { TrendDirection, TrendType } from '../db/Trend'
@@ -15,7 +15,7 @@ describe('Intervals', () => {
   }))
 
   const resetData = () => {
-    store.dispatch(resetPositions())
+    store.dispatch(initPositions([]))
     store.dispatch(changePrice({ ask: 0, bid: 0 }))
     store.dispatch(initLevels(levels))
   }

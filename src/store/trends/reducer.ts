@@ -1,6 +1,6 @@
 import { createReducer } from '@reduxjs/toolkit'
 
-import { addTrend } from './actions'
+import { initTrends, addTrend } from './actions'
 import { Trend } from '../../db/Trend'
 
 export type StoredTrend = {
@@ -10,12 +10,14 @@ export type StoredTrend = {
 }
 
 const reducer = createReducer<StoredTrend[]>([], (builder) =>
-  builder.addCase(addTrend, (state, action) =>
-    state.concat({
-      ...action.payload,
-      id: 0,
-    })
-  )
+  builder
+    .addCase(initTrends, (_, action) => action.payload)
+    .addCase(addTrend, (state, action) =>
+      state.concat({
+        ...action.payload,
+        id: 0,
+      })
+    )
 )
 
 export default reducer

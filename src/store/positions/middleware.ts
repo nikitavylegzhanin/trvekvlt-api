@@ -17,7 +17,7 @@ import { StoredPosition } from './'
 import {
   PositionsActionType,
   ClosePositionPayload,
-  resetPositions,
+  initPositions,
 } from './actions'
 import { selectPositions } from './selectors'
 import { selectConfig, editConfig } from '../config'
@@ -67,7 +67,7 @@ const middleware: Middleware<Dispatch<PayloadAction>> = (store) => (
 
   if (action.type === PositionsActionType.CLOSE_POSITION) {
     if (action.payload.closedByRule === PositionClosingRule.MARKET_PHASE_END) {
-      dispatch(resetPositions())
+      dispatch(initPositions([]))
     }
 
     if (action.payload.closedByRule === PositionClosingRule.SL) {

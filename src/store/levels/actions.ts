@@ -3,7 +3,7 @@ import { createAction } from '@reduxjs/toolkit'
 import { StoredLevel } from './reducer'
 
 export enum LevelsActionType {
-  INIT_LEVELS = 'Levels/RESET_LEVELS',
+  INIT_LEVELS = 'Levels/INIT_LEVELS',
   ADD_LEVELS = 'Levels/ADD_LEVELS',
   DISABLE_LEVEL = 'Levels/DISABLE_LEVEL',
   ENABLE_LEVEL = 'Levels/ENABLE_LEVEL',
