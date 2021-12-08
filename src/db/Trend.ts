@@ -39,7 +39,7 @@ export class Trend {
   type: TrendType
 
   @CreateDateColumn()
-  createdAd: Date
+  createdAt: Date
 
   @UpdateDateColumn()
   updatedAt: Date

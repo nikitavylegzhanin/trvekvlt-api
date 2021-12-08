@@ -18,7 +18,7 @@ export class Level {
   value: number
 
   @CreateDateColumn()
-  createdAd: Date
+  createdAt: Date
 
   @UpdateDateColumn()
   updatedAt: Date
