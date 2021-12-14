@@ -8,10 +8,10 @@ import {
   updatePosition,
   removePosition,
 } from '../store/positions'
-import { disableLevel, removeLevel } from '../store/levels'
+import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
 import { Level, Position, PositionStatus } from '../db'
 
-const openPosition = async (openLevelId: StoredPosition['id']) => {
+export const openPosition = async (openLevelId: StoredPosition['id']) => {
   // блочим уровень
   store.dispatch(disableLevel(openLevelId))
 
@@ -58,4 +58,43 @@ const openPosition = async (openLevelId: StoredPosition['id']) => {
   }
 }
 
-export default openPosition
+export const closePosition = async (
+  positionId: StoredPosition['id'],
+  closedByRule: StoredPosition['closedByRule'],
+  disableLevelId?: StoredLevel['id'],
+  closedLevelId?: StoredPosition['closedLevelId']
+) => {
+  // блочим уровень
+  if (disableLevelId) store.dispatch(disableLevel(disableLevelId))
+
+  // изменяем позицию в стейте
+  store.dispatch(
+    updatePosition({
+      positionId,
+      data: {
+        status: PositionStatus.CLOSING,
+        closedLevelId: closedLevelId,
+        closedByRule: closedByRule,
+      },
+    })
+  )
+
+  // отправляем заявку
+
+  // сохраняем в бд
+  if (process.env.NODE_ENV !== 'test') {
+    const { manager } = getConnection()
+
+    await manager.update(Position, positionId, {
+      status: PositionStatus.CLOSED,
+    })
+  }
+
+  // обновляем стейт
+  store.dispatch(
+    updatePosition({
+      positionId,
+      data: { status: PositionStatus.CLOSED },
+    })
+  )
+}

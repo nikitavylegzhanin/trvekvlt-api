@@ -13,6 +13,7 @@ import { Level } from './Level'
 export enum PositionStatus {
   OPENING,
   OPEN,
+  CLOSING,
   CLOSED,
 }
 
