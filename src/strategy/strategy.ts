@@ -6,12 +6,12 @@ import {
 } from '../store/positions'
 import { selectLevels } from '../store/levels'
 import { editConfig, selectConfig } from '../store/config'
-import { selectLastTrend, addTrend } from '../store/trends'
-import { TrendType } from '../db/Trend'
+import { selectLastTrend } from '../store/trends'
 import { PositionClosingRule } from '../db/Position'
 import { openPosition, closePosition } from './position'
 import { isTradingInterval } from './marketPhase'
 import { manageRules, isTp, isSlt50Percent, isSlt3Ticks, isSl } from './rules'
+import { addCorrectionTrend } from './trend'
 import {
   getLastPrice,
   getPriceDistanceToPrevLevel,
@@ -20,7 +20,6 @@ import {
   isLastPositionOpen,
   getLastClosedPosition,
   isCorrectionTrend,
-  getCorrectionTrendDirection,
   isLastLevel,
   getNextLevel,
 } from './utils'
@@ -128,15 +127,7 @@ export const runStartegy = (ask: number, bid: number) => {
       const lastClosedPosition = getLastClosedPosition(positions)
 
       if (lastClosedPosition?.closedByRule === PositionClosingRule.SL) {
-        const correctionTrendDirection = getCorrectionTrendDirection(lastTrend)
-
-        // TODO: sync trends
-        return store.dispatch(
-          addTrend({
-            direction: correctionTrendDirection,
-            type: TrendType.CORRECTION,
-          })
-        )
+        addCorrectionTrend(lastTrend)
       }
     }
   }
