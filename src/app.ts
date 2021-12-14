@@ -9,7 +9,7 @@ import { initTrends } from './store/trends'
 import { initPositions } from './store/positions'
 import { Level, Trend, Position } from './db'
 import { selectConfig, editConfig } from './store/config'
-import { changePrice, selectPrice } from './store/price'
+import { runStartegy } from './strategy'
 
 const getRelatedLevels = pipe(
   reduce<Position, Level[]>(
@@ -40,7 +40,7 @@ export const initApp = async ({ manager }: Connection) => {
   store.dispatch(
     initPositions(
       positions.map((position) => ({
-        ...pick(['id', 'closingRules', 'closedByRule'], position),
+        ...pick(['id', 'closingRules', 'closedByRule', 'status'], position),
         openLevelId: position.openLevel?.id,
         closedLevelId: position.closedLevel?.id,
       }))
@@ -59,20 +59,20 @@ export const initApp = async ({ manager }: Connection) => {
 export const subscribePrice = (api: InvestSDK) => {
   const state = store.getState()
   const { figi } = selectConfig(state)
-  const price = selectPrice(state)
 
-  let ask = price.ask
-  let bid = price.bid
+  let ask = 0,
+    bid = 0
 
   return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) => {
     const [lastAsk] = asks[0]
     const [lastBid] = bids[0]
 
+    // обрабатываем торговую логику при изменении цены
     if (ask !== lastAsk || bid !== lastBid) {
       ask = lastAsk
       bid = lastBid
 
-      return store.dispatch(changePrice({ ask: asks[0][0], bid: bids[0][0] }))
+      runStartegy(ask, bid)
     }
   })
 }

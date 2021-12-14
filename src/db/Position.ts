@@ -10,6 +10,12 @@ import { always } from 'ramda'
 
 import { Level } from './Level'
 
+export enum PositionStatus {
+  OPENING,
+  OPEN,
+  CLOSED,
+}
+
 export enum PositionClosingRule {
   SL,
   TP,
@@ -28,6 +34,15 @@ export const DEFAULT_CLOSING_RULES = [
 export class Position {
   @PrimaryGeneratedColumn()
   id: number
+
+  @Column('int', {
+    default: PositionStatus.OPEN,
+    transformer: {
+      from: (value: number) => PositionStatus[value],
+      to: always,
+    },
+  })
+  status: PositionStatus
 
   @Column('text', {
     default: JSON.stringify(DEFAULT_CLOSING_RULES),

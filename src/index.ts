@@ -1,7 +1,7 @@
-import db from './db'
+import { connect, close } from './db'
 import { initApp, subscribePrice, startReduxDevTool } from './app'
 
-db.connect()
+connect()
   .then(initApp)
   .then(subscribePrice)
   .then(startReduxDevTool)

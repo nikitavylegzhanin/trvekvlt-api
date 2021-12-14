@@ -1,4 +1,4 @@
-export { default } from './db'
+export * from './db'
 
 export * from './Level'
 export * from './Trend'

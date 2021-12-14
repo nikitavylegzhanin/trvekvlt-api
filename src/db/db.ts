@@ -1,16 +1,16 @@
-import { ConnectionManager } from 'typeorm'
+import { createConnection, getConnection } from 'typeorm'
 
 import { Level } from './Level'
 import { Trend } from './Trend'
 import { Position } from './Position'
 
-const connectionManager = new ConnectionManager()
+export const connect = () =>
+  createConnection({
+    name: 'default',
+    type: 'better-sqlite3',
+    database: 'test.db',
+    entities: [Level, Trend, Position],
+    synchronize: true,
+  })
 
-const db = connectionManager.create({
-  type: 'better-sqlite3',
-  database: 'test.db',
-  entities: [Level, Trend, Position],
-  synchronize: true,
-})
-
-export default db
+export const close = () => getConnection().close()

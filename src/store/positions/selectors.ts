@@ -4,9 +4,6 @@ import { identity, path, findLast, T, find, propEq } from 'ramda'
 import { StoredPosition } from './reducer'
 import { Store } from '../store'
 import { StoredLevel } from '../levels'
-import { getLastPrice } from '../price'
-import { getLastTrend } from '../trends'
-import { TrendDirection } from '../../db/Trend'
 
 const getState = path<Store['positions']>(['positions'])
 
@@ -21,7 +18,7 @@ export const selectLastPosition: Selector<
   StoredPosition
 > = createSelector(getState, getLastPosition)
 
-type PositionWithLevels = StoredPosition & {
+export type PositionWithLevels = StoredPosition & {
   openLevel: StoredLevel
   closedLevel?: StoredLevel
 }
@@ -50,20 +47,4 @@ export const selectLastPositionWithLevels: Selector<
 > = createSelector(
   [selectLastPosition, path<Store['levels']>(['levels'])],
   getLastPositionWithLevels
-)
-
-export const selectPositionProfit: Selector<Store, number> = createSelector(
-  [
-    selectLastPositionWithLevels,
-    path<Store['trends']>(['trends']),
-    path<Store['price']>(['price']),
-  ],
-  (position, trends, price) => {
-    const lastTrend = getLastTrend(trends)
-    const lastPrice = getLastPrice(price, lastTrend)
-
-    return lastTrend?.direction === TrendDirection.UP
-      ? lastPrice - position.openLevel.value
-      : position.openLevel.value - lastPrice
-  }
 )

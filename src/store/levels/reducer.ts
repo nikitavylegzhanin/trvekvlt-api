@@ -1,6 +1,12 @@
 import { createReducer } from '@reduxjs/toolkit'
 
-import { initLevels, addLevels, disableLevel, enableLevel } from './actions'
+import {
+  initLevels,
+  addLevels,
+  removeLevel,
+  disableLevel,
+  enableLevel,
+} from './actions'
 import { Level } from '../../db'
 
 export type StoredLevel = {
@@ -13,6 +19,9 @@ const reducer = createReducer<StoredLevel[]>([], (builder) =>
   builder
     .addCase(initLevels, (_, action) => action.payload)
     .addCase(addLevels, (state, action) => state.concat(action.payload))
+    .addCase(removeLevel, (state, action) =>
+      state.filter((level) => level.id !== action.payload)
+    )
     .addCase(disableLevel, (state, action) =>
       state.map((level) => ({
         ...level,

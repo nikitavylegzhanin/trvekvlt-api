@@ -2,14 +2,16 @@ import { createReducer } from '@reduxjs/toolkit'
 
 import {
   initPositions,
-  openPosition,
-  closePosition,
+  addPosition,
+  updatePosition,
+  removePosition,
   addPositionClosingRule,
 } from './actions'
-import { Position, DEFAULT_CLOSING_RULES } from '../../db'
+import { Position, DEFAULT_CLOSING_RULES, PositionStatus } from '../../db'
 
 export type StoredPosition = {
   id: Position['id']
+  status: Position['status']
   closingRules: Position['closingRules']
   openLevelId: number
   closedByRule?: Position['closedByRule']
@@ -19,19 +21,23 @@ export type StoredPosition = {
 const reducer = createReducer<StoredPosition[]>([], (builder) =>
   builder
     .addCase(initPositions, (_, action) => action.payload)
-    .addCase(openPosition, (state, action) =>
+    .addCase(addPosition, (state, action) =>
       state.concat({
         ...action.payload,
         id: 0,
+        status: PositionStatus.OPENING,
         closingRules: DEFAULT_CLOSING_RULES,
       })
     )
-    .addCase(closePosition, (state, action) =>
-      state.map((position) => ({
-        ...position,
-        closedLevelId: action.payload.closedLevelId,
-        closedByRule: action.payload.closedByRule,
-      }))
+    .addCase(updatePosition, (state, action) =>
+      state.map((position) =>
+        position.id === action.payload.positionId
+          ? { ...position, ...action.payload.data }
+          : position
+      )
+    )
+    .addCase(removePosition, (state, action) =>
+      state.filter((position) => position.id !== action.payload)
     )
     .addCase(addPositionClosingRule, (state, action) =>
       state.map((position) => ({

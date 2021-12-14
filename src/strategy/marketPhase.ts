@@ -1,5 +1,3 @@
-import { StoredLevel } from '../levels/reducer'
-
 type MarketPhaseInterval = [number, number, number, number]
 
 const OPEN_MARKET_PHASE_INTERVALS = {
@@ -15,14 +13,4 @@ export const isTradingInterval = (date: Date) => {
   const time = date.getTime()
 
   return time >= startTime && time <= endTime
-}
-
-export const isLastLevel = (
-  levelId: StoredLevel['id'],
-  levels: StoredLevel[]
-) => {
-  const sortedLevels = [...levels].sort((a, b) => a.value - b.value)
-  const levelIndex = sortedLevels.findIndex(({ id }) => id === levelId)
-
-  return levelIndex === 0 || levelIndex === sortedLevels.length - 1
 }
