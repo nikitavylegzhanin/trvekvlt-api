@@ -6,6 +6,8 @@ import { addTrend } from '../store/trends'
 import { TrendDirection, TrendType } from '../db/Trend'
 import { runStartegy } from '../strategy'
 
+const placeOrder = jest.fn((data) => data)
+
 describe('SL', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
@@ -31,14 +33,14 @@ describe('SL', () => {
     )
 
     // 1. Открываем позицию в лонг на уровне 2
-    runStartegy(1.9, 2)
+    runStartegy(1.9, 2, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,
     })
 
     // 2. Цена падает на 50% до следующего уровня против тренда → SL
-    runStartegy(1.4, 1.5)
+    runStartegy(1.4, 1.5, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 2,
@@ -54,8 +56,8 @@ describe('SL', () => {
     // 2 -----╲╱----- | Short
 
     // 1. Long → SL
-    runStartegy(3.9, 4)
-    runStartegy(3.4, 3.5)
+    runStartegy(3.9, 4, placeOrder)
+    runStartegy(3.4, 3.5, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 4,
@@ -63,8 +65,8 @@ describe('SL', () => {
     })
 
     // 2. Long → SL → Correction
-    runStartegy(2.9, 3)
-    runStartegy(2.4, 2.5)
+    runStartegy(2.9, 3, placeOrder)
+    runStartegy(2.4, 2.5, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 3,
@@ -72,8 +74,8 @@ describe('SL', () => {
     })
 
     // 3. Short → SL
-    runStartegy(2, 2.1)
-    runStartegy(2.5, 2.6)
+    runStartegy(2, 2.1, placeOrder)
+    runStartegy(2.5, 2.6, placeOrder)
     const position3 = selectLastPosition(store.getState())
     expect(position3).toMatchObject<Partial<typeof position3>>({
       openLevelId: 2,
@@ -81,7 +83,7 @@ describe('SL', () => {
     })
 
     // 4. Do not open positions yet
-    runStartegy(2.9, 3) // 2SL reverses trend
+    runStartegy(2.9, 3, placeOrder) // 2SL reverses trend
     const position4 = selectLastPosition(store.getState())
     expect(position4.openLevelId).toBe(2)
     expect(position4.closedByRule).toBe(PositionClosingRule.SL)

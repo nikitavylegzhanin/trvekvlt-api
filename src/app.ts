@@ -1,4 +1,4 @@
-import InvestSDK from '@tinkoff/invest-openapi-js-sdk'
+import InvestSDK, { OperationType } from '@tinkoff/invest-openapi-js-sdk'
 import reduxDevTools from '@redux-devtools/cli'
 import { Connection } from 'typeorm'
 import { pick, not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
@@ -63,6 +63,9 @@ export const subscribePrice = (api: InvestSDK) => {
   let ask = 0,
     bid = 0
 
+  const placeOrder = (operation: OperationType) =>
+    api.marketOrder({ figi, operation, lots: 1 })
+
   return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) => {
     const [lastAsk] = asks[0]
     const [lastBid] = bids[0]
@@ -72,7 +75,7 @@ export const subscribePrice = (api: InvestSDK) => {
       ask = lastAsk
       bid = lastBid
 
-      runStartegy(ask, bid)
+      runStartegy(ask, bid, placeOrder)
     }
   })
 }

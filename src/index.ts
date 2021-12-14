@@ -1,4 +1,4 @@
-import { connect, close } from './db'
+import { connect } from './db'
 import { initApp, subscribePrice, startReduxDevTool } from './app'
 
 connect()

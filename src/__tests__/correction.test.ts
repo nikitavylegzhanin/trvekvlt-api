@@ -6,6 +6,8 @@ import { selectLastPosition } from '../store/positions'
 import { PositionClosingRule } from '../db/Position'
 import { runStartegy } from '../strategy'
 
+const placeOrder = jest.fn((data) => data)
+
 describe('Correction', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
@@ -28,13 +30,13 @@ describe('Correction', () => {
     })
 
     // 2. Открываем позицию
-    runStartegy(1.9, 2)
+    runStartegy(1.9, 2, placeOrder)
     const lastPosition2 = selectLastPosition(store.getState())
     expect(lastPosition2.openLevelId).toBe(2)
     expect(lastPosition2.closedByRule).toBeUndefined()
 
     // 3. Закрываем по стопу
-    runStartegy(1.4, 1.5)
+    runStartegy(1.4, 1.5, placeOrder)
     const lastPosition3 = selectLastPosition(store.getState())
     expect(lastPosition3).toMatchObject<Partial<typeof lastPosition3>>({
       openLevelId: 2,
@@ -42,13 +44,13 @@ describe('Correction', () => {
     })
 
     // 4. Открываем еще одну
-    runStartegy(1.9, 2)
+    runStartegy(1.9, 2, placeOrder)
     const lastPosition4 = selectLastPosition(store.getState())
     expect(lastPosition4.openLevelId).toBe(2)
     expect(lastPosition4.closedByRule).toBeUndefined()
 
     // 5. Закрываем по стопу повторно
-    runStartegy(1.4, 1.5)
+    runStartegy(1.4, 1.5, placeOrder)
     const lastPosition5 = selectLastPosition(store.getState())
     expect(lastPosition5).toMatchObject<Partial<typeof lastPosition5>>({
       openLevelId: 2,

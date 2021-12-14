@@ -1,3 +1,5 @@
+import { OperationType } from '@tinkoff/invest-openapi-js-sdk'
+
 import { propEq, ifElse, always } from 'ramda'
 
 import { TrendDirection, TrendType } from '../../db/Trend'
@@ -14,3 +16,15 @@ export const getCorrectionTrendDirection = ifElse<
   always(TrendDirection.DOWN),
   always(TrendDirection.UP)
 )
+
+export const getOpenOperation = ifElse<
+  StoredTrend[],
+  OperationType,
+  OperationType
+>(propEq('direction', TrendDirection.UP), always('Buy'), always('Sell'))
+
+export const getCloseOperation = ifElse<
+  StoredTrend[],
+  OperationType,
+  OperationType
+>(propEq('direction', TrendDirection.UP), always('Sell'), always('Buy'))

@@ -1,3 +1,4 @@
+import { PlacedMarketOrder } from '@tinkoff/invest-openapi-js-sdk'
 import { getConnection } from 'typeorm'
 import { pick } from 'ramda'
 
@@ -11,16 +12,16 @@ import {
 import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
 import { Level, Position, PositionStatus } from '../db'
 
-export const openPosition = async (openLevelId: StoredPosition['id']) => {
+export const openPosition = async (
+  placeOrder: () => Promise<PlacedMarketOrder>,
+  openLevelId: StoredPosition['id']
+) => {
   // блочим уровень
   store.dispatch(disableLevel(openLevelId))
 
   // добавляем позицию в стейт
   store.dispatch(addPosition({ openLevelId }))
 
-  // отправляем заявку
-
-  // сохраняем в бд
   try {
     if (process.env.NODE_ENV === 'test') {
       store.dispatch(
@@ -36,8 +37,15 @@ export const openPosition = async (openLevelId: StoredPosition['id']) => {
       return
     }
 
-    const { manager } = getConnection()
+    // отправляем заявку
+    const order = await placeOrder()
 
+    if (order.rejectReason) {
+      throw new Error(order.rejectReason)
+    }
+
+    // сохраняем в бд
+    const { manager } = getConnection()
     const openLevel = await manager.findOneOrFail(Level, openLevelId) // роняем при расхождении в уровнях
     const position = await manager.save(manager.create(Position, { openLevel }))
 
@@ -59,6 +67,7 @@ export const openPosition = async (openLevelId: StoredPosition['id']) => {
 }
 
 export const closePosition = async (
+  placeOrder: () => Promise<PlacedMarketOrder>,
   positionId: StoredPosition['id'],
   closedByRule: StoredPosition['closedByRule'],
   disableLevelId?: StoredLevel['id'],
@@ -79,12 +88,16 @@ export const closePosition = async (
     })
   )
 
-  // отправляем заявку
-
-  // сохраняем в бд
   if (process.env.NODE_ENV !== 'test') {
-    const { manager } = getConnection()
+    // отправляем заявку
+    const order = await placeOrder()
 
+    if (order.rejectReason) {
+      throw new Error(order.rejectReason)
+    }
+
+    // сохраняем в бд
+    const { manager } = getConnection()
     await manager.update(Position, positionId, {
       status: PositionStatus.CLOSED,
     })

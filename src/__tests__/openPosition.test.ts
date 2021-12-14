@@ -5,6 +5,8 @@ import { addTrend } from '../store/trends'
 import { TrendDirection, TrendType } from '../db/Trend'
 import { runStartegy } from '../strategy'
 
+const placeOrder = jest.fn((data) => data)
+
 describe('Открытие позиции в направлении тренда', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
@@ -31,7 +33,7 @@ describe('Открытие позиции в направлении тренда
     const positionA = selectLastPosition(store.getState())
     expect(positionA).toBeUndefined()
 
-    runStartegy(ask, bid)
+    runStartegy(ask, bid, placeOrder)
 
     const positionB = selectLastPosition(store.getState())
     expect(positionB).toMatchObject<Partial<typeof positionB>>({
@@ -47,7 +49,7 @@ describe('Открытие позиции в направлении тренда
     const positionA = selectLastPosition(store.getState())
     expect(positionA).toBeUndefined()
 
-    runStartegy(ask, bid)
+    runStartegy(ask, bid, placeOrder)
 
     const positionB = selectLastPosition(store.getState())
     expect(positionB).toMatchObject<Partial<typeof positionB>>({
@@ -55,7 +57,7 @@ describe('Открытие позиции в направлении тренда
     })
 
     // Только одна открытая заявка
-    runStartegy(4, bid)
+    runStartegy(4, bid, placeOrder)
     const positionC = selectLastPosition(store.getState())
     expect(positionC).toMatchObject<Partial<typeof positionC>>({
       openLevelId: levels.find(({ value }) => value === ask).id,
@@ -68,12 +70,12 @@ describe('Открытие позиции в направлении тренда
     )
 
     // Верхний уровень
-    runStartegy(4.9, 5)
+    runStartegy(4.9, 5, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toBeUndefined()
 
     // Нижний уровень
-    runStartegy(0.9, 1)
+    runStartegy(0.9, 1, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toBeUndefined()
   })
