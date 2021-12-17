@@ -38,7 +38,11 @@ export class Position {
   @Column('enum', { enum: PositionStatus })
   status: PositionStatus
 
-  @Column('enum', { enum: PositionClosingRule, array: true })
+  @Column('enum', {
+    enum: PositionClosingRule,
+    array: true,
+    default: DEFAULT_CLOSING_RULES,
+  })
   closingRules: PositionClosingRule[]
 
   @Column('enum', { enum: PositionClosingRule })
