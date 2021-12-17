@@ -4,11 +4,12 @@ import { Level } from './Level'
 import { Trend } from './Trend'
 import { Position } from './Position'
 
+const url = `postgres://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@bot-dev.postgres.database.azure.com/postgres?sslmode=require`
+
 export const connect = () =>
   createConnection({
-    name: 'default',
-    type: 'better-sqlite3',
-    database: 'test.db',
+    type: 'postgres',
+    url,
     entities: [Level, Trend, Position],
     synchronize: true,
   })

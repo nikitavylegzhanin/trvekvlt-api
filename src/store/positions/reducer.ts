@@ -7,15 +7,20 @@ import {
   removePosition,
   addPositionClosingRule,
 } from './actions'
-import { Position, DEFAULT_CLOSING_RULES, PositionStatus } from '../../db'
+import {
+  Position,
+  DEFAULT_CLOSING_RULES,
+  PositionStatus,
+  Level,
+} from '../../db'
 
 export type StoredPosition = {
-  id: Position['id']
+  id: Position['id'] | number
   status: Position['status']
   closingRules: Position['closingRules']
-  openLevelId: number
+  openLevelId: Level['id']
   closedByRule?: Position['closedByRule']
-  closedLevelId?: number
+  closedLevelId?: Level['id']
 }
 
 const reducer = createReducer<StoredPosition[]>([], (builder) =>

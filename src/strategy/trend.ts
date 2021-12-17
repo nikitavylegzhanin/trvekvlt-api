@@ -2,7 +2,7 @@ import { getConnection } from 'typeorm'
 
 import store from '../store'
 import { Trend, TrendType } from '../db/Trend'
-import { StoredTrend, addTrend } from '../store/trends'
+import { StoredTrend, addTrend, updateTrend } from '../store/trends'
 import { getCorrectionTrendDirection } from './utils'
 
 export const addCorrectionTrend = async (lastTrend: StoredTrend) => {
@@ -18,6 +18,13 @@ export const addCorrectionTrend = async (lastTrend: StoredTrend) => {
 
   if (process.env.NODE_ENV !== 'test') {
     const { manager } = getConnection()
-    await manager.save(manager.create(Trend, { direction, type }))
+    const trend = await manager.save(manager.create(Trend, { direction, type }))
+
+    store.dispatch(
+      updateTrend({
+        trendId: 0,
+        data: trend,
+      })
+    )
   }
 }

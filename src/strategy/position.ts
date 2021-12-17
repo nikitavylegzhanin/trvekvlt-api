@@ -14,7 +14,7 @@ import { Level, Position, PositionStatus } from '../db'
 
 export const openPosition = async (
   placeOrder: () => Promise<PlacedMarketOrder>,
-  openLevelId: StoredPosition['id']
+  openLevelId: StoredLevel['id']
 ) => {
   // блочим уровень
   store.dispatch(disableLevel(openLevelId))

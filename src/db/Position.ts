@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   ManyToOne,
 } from 'typeorm'
-import { always } from 'ramda'
 
 import { Level } from './Level'
 
@@ -36,31 +35,13 @@ export class Position {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('int', {
-    default: PositionStatus.OPEN,
-    transformer: {
-      from: (value: number) => PositionStatus[value],
-      to: always,
-    },
-  })
+  @Column('enum', { enum: PositionStatus })
   status: PositionStatus
 
-  @Column('text', {
-    default: JSON.stringify(DEFAULT_CLOSING_RULES),
-    transformer: {
-      from: JSON.parse,
-      to: JSON.stringify,
-    },
-  })
+  @Column('enum', { enum: PositionClosingRule, array: true })
   closingRules: PositionClosingRule[]
 
-  @Column('int', {
-    nullable: true,
-    transformer: {
-      from: (value: number) => PositionClosingRule[value],
-      to: always,
-    },
-  })
+  @Column('enum', { enum: PositionClosingRule })
   closedByRule?: PositionClosingRule
 
   @CreateDateColumn()

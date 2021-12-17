@@ -14,7 +14,7 @@ export class Level {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('real')
+  @Column()
   value: number
 
   @CreateDateColumn()

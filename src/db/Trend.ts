@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm'
-import { always } from 'ramda'
 
 export enum TrendDirection {
   UP,
@@ -22,20 +21,10 @@ export class Trend {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('int', {
-    transformer: {
-      from: (value) => TrendDirection[value],
-      to: always,
-    },
-  })
+  @Column('enum', { enum: TrendDirection })
   direction: TrendDirection
 
-  @Column('int', {
-    transformer: {
-      from: (value) => TrendType[value],
-      to: always,
-    },
-  })
+  @Column('enum', { enum: TrendType })
   type: TrendType
 
   @CreateDateColumn()
