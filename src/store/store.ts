@@ -15,7 +15,13 @@ const store = configureStore({
   },
   enhancers:
     process.env.NODE_ENV !== 'test'
-      ? [devToolsEnhancer({ realtime: true, port: 8000 })]
+      ? [
+          devToolsEnhancer({
+            realtime: true,
+            port: parseInt(process.env.PORT),
+            secure: true,
+          }),
+        ]
       : undefined,
 })
 
