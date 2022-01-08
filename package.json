@@ -10,6 +10,8 @@
   "dependencies": {
     "@reduxjs/toolkit": "^1.6.1",
     "@tinkoff/invest-openapi-js-sdk": "^1.5.0",
+    "apollo-server": "^3.6.1",
+    "graphql": "^16.2.0",
     "ramda": "^0.27.1",
     "typeorm": "^0.2.41"
   },
