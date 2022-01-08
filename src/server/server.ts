@@ -1,4 +1,4 @@
-import { ApolloServer } from 'apollo-server'
+import { ApolloServer, ServerInfo } from 'apollo-server'
 
 import store from '../store'
 import typeDefs from './typeDefs'
@@ -15,4 +15,10 @@ export const startServer = () => {
   })
 
   return server.listen({ port: process.env.PORT })
+}
+
+export const logUrl = ({ url }: ServerInfo) => {
+  if (process.env.NODE_ENV !== 'development') return
+
+  return console.log(`Server ready at ${url}`)
 }
