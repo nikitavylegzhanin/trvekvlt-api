@@ -1,5 +1,4 @@
 import InvestSDK, { OperationType } from '@tinkoff/invest-openapi-js-sdk'
-import reduxDevTools from '@redux-devtools/cli'
 import { Connection } from 'typeorm'
 import { pick, not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
 
@@ -90,10 +89,3 @@ export const subscribePrice = (api: InvestSDK) => {
     }
   })
 }
-
-export const startReduxDevTool = () =>
-  reduxDevTools({
-    hostname: process.env.WEBSITE_HOSTNAME,
-    port: process.env.PORT,
-    protocol: 'https',
-  })
