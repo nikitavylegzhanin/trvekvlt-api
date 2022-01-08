@@ -18,6 +18,7 @@ export type EditableConfigParams = Partial<{
 
 type Config = {
   api: typeof api
+  isSandbox: boolean
 } & EditableConfigParams
 
 const initialState: Config = {
@@ -26,6 +27,7 @@ const initialState: Config = {
     secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],
     socketURL: process.env.API_URL_WS,
   },
+  isSandbox,
   ticker: process.env.TICKER,
   isDisabled: false,
 }

@@ -53,6 +53,11 @@ export const initApp = async ({ manager }: Connection) => {
     store.dispatch(addLevels(relatedLevels.map(pick(['id', 'value']))))
   }
 
+  if (config.isSandbox) {
+    await api.sandboxClear()
+    await api.setCurrenciesBalance({ currency: 'USD', balance: 100 })
+  }
+
   return api
 }
 
