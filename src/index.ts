@@ -1,7 +1,7 @@
 import { connect } from './db'
 import { initApp, subscribePrice, startReduxDevTool } from './app'
 
-console.log('Test env TICKER', process.env.TICKER)
+console.log(process.env.WEBSITE_HOSTNAME, process.env.PORT)
 
 connect()
   .then(initApp)
