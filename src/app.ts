@@ -92,4 +92,4 @@ export const subscribePrice = (api: InvestSDK) => {
 }
 
 export const startReduxDevTool = () =>
-  reduxDevTools({ hostname: 'localhost', port: 8000 })
+  reduxDevTools({ hostname: 'localhost', port: 8080 })
