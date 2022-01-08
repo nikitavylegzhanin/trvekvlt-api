@@ -20,9 +20,15 @@ const getRelatedLevels = pipe(
   uniq
 )
 
+const getApiConfig = (isSandbox: boolean) => ({
+  apiURL: process.env[isSandbox ? 'API_URL_SANDBOX' : 'API_URL'],
+  secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],
+  socketURL: process.env.API_URL_WS,
+})
+
 export const initApp = async ({ manager }: Connection) => {
   const config = selectConfig(store.getState())
-  const api = new InvestSDK(config.api)
+  const api = new InvestSDK(getApiConfig(config.isSandbox))
   const { figi } = await api.searchOne({ ticker: config.ticker })
 
   store.dispatch(editConfig({ figi }))
