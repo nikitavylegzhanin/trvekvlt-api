@@ -1,6 +1,8 @@
 import { gql } from 'apollo-server'
 
 const typeDefs = gql`
+  scalar Date
+
   type StoredConfig {
     ticker: String
     figi: String
@@ -39,8 +41,15 @@ const typeDefs = gql`
     trends: [StoredTrend]
   }
 
+  type Log {
+    id: ID
+    message: String
+    createdAt: Date
+  }
+
   type Query {
     state: State
+    log: [Log]
   }
 `
 

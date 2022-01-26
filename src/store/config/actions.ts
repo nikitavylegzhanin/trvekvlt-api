@@ -2,11 +2,11 @@ import { createAction, ActionCreatorWithPayload } from '@reduxjs/toolkit'
 
 import { EditableConfigParams } from './reducer'
 
-enum ConfigActionType {
+export enum ConfigActionType {
   EDIT = 'Config/EDIT',
 }
 
-type EditConfigPayload = Partial<EditableConfigParams>
+export type EditConfigPayload = Partial<EditableConfigParams>
 export const editConfig: ActionCreatorWithPayload<
   EditConfigPayload,
   ConfigActionType.EDIT

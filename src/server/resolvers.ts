@@ -1,6 +1,8 @@
 import { Config } from 'apollo-server'
+import { getConnection } from 'typeorm'
 
 import { Context } from './'
+import { Log } from '../db'
 
 const resolvers: Config['resolvers'] = {
   Query: {
@@ -8,6 +10,11 @@ const resolvers: Config['resolvers'] = {
       const state = store.getState()
 
       return state
+    },
+    log: () => {
+      const { manager } = getConnection()
+
+      return manager.find(Log)
     },
   },
 }
