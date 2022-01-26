@@ -7,13 +7,13 @@ import {
 } from 'typeorm'
 
 export enum TrendDirection {
-  UP,
-  DOWN,
+  UP = 'UP',
+  DOWN = 'DOWN',
 }
 
 export enum TrendType {
-  MANUAL,
-  CORRECTION,
+  MANUAL = 'MANUAL',
+  CORRECTION = 'CORRECTION',
 }
 
 @Entity()

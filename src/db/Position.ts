@@ -10,18 +10,18 @@ import {
 import { Level } from './Level'
 
 export enum PositionStatus {
-  OPENING,
-  OPEN,
-  CLOSING,
-  CLOSED,
+  OPENING = 'OPENING',
+  OPEN = 'OPEN',
+  CLOSING = 'CLOSING',
+  CLOSED = 'CLOSED',
 }
 
 export enum PositionClosingRule {
-  SL,
-  TP,
-  SLT_3TICKS,
-  SLT_50PERCENT,
-  MARKET_PHASE_END,
+  SL = 'SL',
+  TP = 'TP',
+  SLT_3TICKS = 'SLT_3TICKS',
+  SLT_50PERCENT = 'SLT_50PERCENT',
+  MARKET_PHASE_END = 'MARKET_PHASE_END',
 }
 
 export const DEFAULT_CLOSING_RULES = [
