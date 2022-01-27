@@ -32,7 +32,7 @@ const isIgnoredAction = (action: PayloadAction<any>) => {
 }
 
 const logMiddleware: Middleware = (_store) => (next) => (action) => {
-  if (!isIgnoredAction(action)) {
+  if (!isIgnoredAction(action) && process.env.NODE_ENV !== 'test') {
     const { manager } = getConnection()
     manager.save(manager.create(Log, { message: JSON.stringify(action) }))
   }
