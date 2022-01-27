@@ -15,7 +15,13 @@ import { selectLastTrend } from '../store/trends'
 import { PositionClosingRule } from '../db/Position'
 import { openPosition, closePosition } from './position'
 import { isTradingInterval } from './marketPhase'
-import { manageRules, isTp, isSlt50Percent, isSlt3Ticks, isSl } from './rules'
+import {
+  manageClosingRules,
+  isTp,
+  isSlt50Percent,
+  isSlt3Ticks,
+  isSl,
+} from './rules'
 import { addCorrectionTrend } from './trend'
 import {
   getLastPrice,
@@ -83,7 +89,9 @@ export const runStartegy = (
   )
 
   // менеджерим правила при изменении цены
-  manageRules(distance, lastPosition)
+  if (lastPosition) {
+    manageClosingRules(distance, lastPosition)
+  }
 
   const nextLevel = getNextLevel(levels, lastPrice)
 

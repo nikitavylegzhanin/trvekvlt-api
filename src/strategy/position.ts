@@ -10,7 +10,7 @@ import {
   removePosition,
 } from '../store/positions'
 import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
-import { Level, Position, PositionStatus } from '../db'
+import { Level, Position, PositionStatus, PositionClosingRule } from '../db'
 
 export const openPosition = async (
   placeOrder: () => Promise<PlacedMarketOrder>,
@@ -100,6 +100,7 @@ export const closePosition = async (
     const { manager } = getConnection()
     await manager.update(Position, positionId, {
       status: PositionStatus.CLOSED,
+      closedByRule,
     })
   }
 
@@ -110,4 +111,32 @@ export const closePosition = async (
       data: { status: PositionStatus.CLOSED },
     })
   )
+}
+
+export const updatePositionClosingRules = async (
+  position: StoredPosition,
+  closingRules: PositionClosingRule[]
+) => {
+  store.dispatch(
+    updatePosition({
+      positionId: position.id,
+      data: { closingRules },
+    })
+  )
+
+  if (process.env.NODE_ENV === 'test') return
+
+  try {
+    const { manager } = getConnection()
+    await manager.update(Position, position.id, { closingRules })
+  } catch (error) {
+    store.dispatch(
+      updatePosition({
+        positionId: position.id,
+        data: {
+          closingRules: position.closingRules,
+        },
+      })
+    )
+  }
 }

@@ -5,7 +5,6 @@ import {
   addPosition,
   updatePosition,
   removePosition,
-  addPositionClosingRule,
 } from './actions'
 import {
   Position,
@@ -43,15 +42,6 @@ const reducer = createReducer<StoredPosition[]>([], (builder) =>
     )
     .addCase(removePosition, (state, action) =>
       state.filter((position) => position.id !== action.payload)
-    )
-    .addCase(addPositionClosingRule, (state, action) =>
-      state.map((position) => ({
-        ...position,
-        closingRules:
-          position.id === action.payload.positionId
-            ? position.closingRules.concat(action.payload.closingRule)
-            : position.closingRules,
-      }))
     )
 )
 

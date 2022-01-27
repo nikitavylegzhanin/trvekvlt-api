@@ -1,13 +1,11 @@
 import { pathEq } from 'ramda'
 
 import store from '../store'
-import {
-  addPositionClosingRule,
-  PositionWithLevels,
-  StoredPosition,
-} from '../store/positions'
+import { PositionWithLevels, StoredPosition } from '../store/positions'
 import { enableLevel, StoredLevel } from '../store/levels'
 import { PositionClosingRule } from '../db/Position'
+import { updatePositionClosingRules } from './position'
+import { isLastPositionOpen } from './utils'
 
 enum Distance {
   GOOD = 0.7,
@@ -23,11 +21,11 @@ const isAbleToCloseBySlt3Ticks = (
   closingRules: PositionWithLevels['closingRules']
 ) => closingRules.includes(PositionClosingRule.SLT_3TICKS)
 
-export const manageRules = (
+export const manageClosingRules = (
   distance: number,
-  lastPosition?: PositionWithLevels
+  lastPosition: PositionWithLevels
 ) => {
-  if (!lastPosition) return
+  const closingRules = [...lastPosition.closingRules]
 
   if (distance >= Distance.NOT_BAD) {
     // от середины разблочим уровни (на которых открывали/закрывали позицию)
@@ -39,28 +37,27 @@ export const manageRules = (
       store.dispatch(enableLevel(lastPosition.closedLevelId))
     }
 
-    if (!isAbleToCloseBySlt3Ticks(lastPosition.closingRules)) {
+    if (
+      isLastPositionOpen(lastPosition) &&
+      !isAbleToCloseBySlt3Ticks(lastPosition.closingRules)
+    ) {
       // разрешим закрываться в 0
-      store.dispatch(
-        addPositionClosingRule({
-          positionId: lastPosition.id,
-          closingRule: PositionClosingRule.SLT_3TICKS,
-        })
-      )
+      closingRules.push(PositionClosingRule.SLT_3TICKS)
     }
   }
 
   if (
     distance >= Distance.GOOD &&
+    isLastPositionOpen(lastPosition) &&
     !isAbleToCloseBySlt50(lastPosition.closingRules)
   ) {
     // рядом со следующим уровнем разрешим закрываться в половину прибыли
-    store.dispatch(
-      addPositionClosingRule({
-        positionId: lastPosition.id,
-        closingRule: PositionClosingRule.SLT_50PERCENT,
-      })
-    )
+    closingRules.push(PositionClosingRule.SLT_50PERCENT)
+  }
+
+  // обновляем правила закрытия при изменении
+  if (closingRules.length !== lastPosition.closingRules.length) {
+    updatePositionClosingRules(lastPosition, closingRules)
   }
 }
 
