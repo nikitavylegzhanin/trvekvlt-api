@@ -17,8 +17,5 @@ export const startServer = () => {
   return server.listen({ port: process.env.PORT })
 }
 
-export const logUrl = ({ url }: ServerInfo) => {
-  if (process.env.NODE_ENV !== 'development') return
-
-  return console.log(`Server ready at ${url}`)
-}
+export const logUrl = ({ url }: ServerInfo) =>
+  console.log(`Server ready at ${url}`)
