@@ -35,7 +35,7 @@ export class Position {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('enum', { enum: PositionStatus })
+  @Column('enum', { enum: PositionStatus, default: PositionStatus.OPEN })
   status: PositionStatus
 
   @Column('enum', {
@@ -45,7 +45,7 @@ export class Position {
   })
   closingRules: PositionClosingRule[]
 
-  @Column('enum', { enum: PositionClosingRule })
+  @Column('enum', { enum: PositionClosingRule, nullable: true })
   closedByRule?: PositionClosingRule
 
   @CreateDateColumn()
