@@ -13,25 +13,47 @@ const typeDefs = gql`
   type StoredLevel {
     id: ID
     value: Float
-    isDisabled: Boolean
+    # isDisabled: Boolean
   }
 
-  # enum PositionStatus
-  # enum PositionClosingRule
+  enum PositionStatus {
+    OPENING
+    OPEN
+    CLOSING
+    CLOSED
+  }
+
+  enum PositionClosingRule {
+    SL
+    TP
+    SLT_3TICKS
+    SLT_50PERCENT
+    MARKET_PHASE_END
+  }
 
   type StoredPosition {
     id: ID
-    status: Int
-    closingRules: [Int]
+    status: PositionStatus
+    closingRules: [PositionClosingRule]
     openLevelId: ID
-    closedByRule: Int
+    closedByRule: PositionClosingRule
     closedLevelId: ID
+  }
+
+  enum TrendDirection {
+    UP
+    DOWN
+  }
+
+  enum TrendType {
+    MANUAL
+    CORRECTION
   }
 
   type StoredTrend {
     id: ID
-    direction: Int
-    type: Int
+    direction: TrendDirection
+    type: TrendType
   }
 
   type State {
