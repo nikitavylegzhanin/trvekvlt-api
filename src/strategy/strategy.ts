@@ -1,7 +1,4 @@
-import {
-  OperationType,
-  PlacedMarketOrder,
-} from '@tinkoff/invest-openapi-js-sdk'
+import { OperationType, Operation } from '@tinkoff/invest-openapi-js-sdk'
 
 import store from '../store'
 import {
@@ -37,7 +34,7 @@ import {
   getCloseOperation,
 } from './utils'
 
-type PlaceOrder = (operation: OperationType) => Promise<PlacedMarketOrder>
+type PlaceOrder = (operation: OperationType) => Promise<Operation>
 
 export const runStartegy = (
   ask: number,

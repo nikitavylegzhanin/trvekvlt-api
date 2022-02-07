@@ -14,3 +14,14 @@ export const isTradingInterval = (date: Date) => {
 
   return time >= startTime && time <= endTime
 }
+
+export const getOpenMarketPhaseInterval = () => {
+  return {
+    from: new Date(
+      new Date().setHours(...OPEN_MARKET_PHASE_INTERVALS.start)
+    ).toISOString(),
+    to: new Date(
+      new Date().setHours(...OPEN_MARKET_PHASE_INTERVALS.end)
+    ).toISOString(),
+  }
+}

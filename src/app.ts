@@ -1,6 +1,10 @@
-import InvestSDK, { OperationType } from '@tinkoff/invest-openapi-js-sdk'
+import InvestSDK, {
+  OperationType,
+  Operation,
+} from '@tinkoff/invest-openapi-js-sdk'
 import { Connection } from 'typeorm'
 import { pick, not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
+import { nanoid } from '@reduxjs/toolkit'
 
 import store from './store'
 import { initLevels, addLevels } from './store/levels'
@@ -9,6 +13,7 @@ import { initPositions } from './store/positions'
 import { Level, Trend, Position } from './db'
 import { selectConfig, editConfig } from './store/config'
 import { runStartegy } from './strategy'
+import { getOpenMarketPhaseInterval } from './strategy/marketPhase'
 
 const getRelatedLevels = pipe(
   reduce<Position, Level[]>(
@@ -66,15 +71,55 @@ export const initApp = async ({ manager }: Connection) => {
   return api
 }
 
-export const subscribePrice = (api: InvestSDK) => {
+export const subscribePrice = async (api: InvestSDK) => {
   const state = store.getState()
   const { figi } = selectConfig(state)
 
   let ask = 0,
     bid = 0
 
-  const placeOrder = (operation: OperationType) =>
-    api.marketOrder({ figi, operation, lots: 1 })
+  const placeOrder = async (
+    operationType: OperationType
+  ): Promise<Operation> => {
+    const lots = 1
+    const order = await api.marketOrder({
+      figi,
+      operation: operationType,
+      lots,
+    })
+
+    if (order.rejectReason) {
+      throw new Error(order.rejectReason)
+    }
+
+    if (order.status === 'Fill') {
+      const openMarketPhaseInterval = getOpenMarketPhaseInterval()
+
+      const { operations } = await api.operations({
+        ...openMarketPhaseInterval,
+        figi,
+      })
+
+      const [operation] = operations.filter(
+        (operation) => operation.operationType === operationType
+      )
+
+      return operation
+    }
+
+    return {
+      operationType,
+      figi,
+      id: nanoid(),
+      isMarginCall: false,
+      quantity: lots,
+      price: operationType === 'Buy' ? ask : bid,
+      status: 'Done',
+      currency: 'USD',
+      payment: operationType === 'Buy' ? ask * -1 : bid,
+      date: new Date().toISOString(),
+    }
+  }
 
   return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) => {
     const [lastAsk] = asks[0]

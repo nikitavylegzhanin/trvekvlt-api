@@ -1,4 +1,4 @@
-import { PlacedMarketOrder } from '@tinkoff/invest-openapi-js-sdk'
+import { Operation } from '@tinkoff/invest-openapi-js-sdk'
 import { getConnection } from 'typeorm'
 import { pick } from 'ramda'
 
@@ -13,7 +13,7 @@ import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
 import { Level, Position, PositionStatus, PositionClosingRule } from '../db'
 
 export const openPosition = async (
-  placeOrder: () => Promise<PlacedMarketOrder>,
+  placeOrder: () => Promise<Operation>,
   openLevelId: StoredLevel['id']
 ) => {
   // блочим уровень
@@ -38,16 +38,14 @@ export const openPosition = async (
     }
 
     // отправляем заявку
-    const order = await placeOrder()
-
-    if (order.rejectReason) {
-      throw new Error(order.rejectReason)
-    }
+    const operation = await placeOrder()
 
     // сохраняем в бд
     const { manager } = getConnection()
     const openLevel = await manager.findOneOrFail(Level, openLevelId) // роняем при расхождении в уровнях
-    const position = await manager.save(manager.create(Position, { openLevel }))
+    const position = await manager.save(
+      manager.create(Position, { openLevel, operations: [operation] })
+    )
 
     // обновляем данные позиции
     store.dispatch(
@@ -67,7 +65,7 @@ export const openPosition = async (
 }
 
 export const closePosition = async (
-  placeOrder: () => Promise<PlacedMarketOrder>,
+  placeOrder: () => Promise<Operation>,
   positionId: StoredPosition['id'],
   closedByRule: StoredPosition['closedByRule'],
   disableLevelId?: StoredLevel['id'],
@@ -90,18 +88,17 @@ export const closePosition = async (
 
   if (process.env.NODE_ENV !== 'test') {
     // отправляем заявку
-    const order = await placeOrder()
-
-    if (order.rejectReason) {
-      throw new Error(order.rejectReason)
-    }
+    const operation = await placeOrder()
 
     // сохраняем в бд
     const { manager } = getConnection()
-    await manager.update(Position, positionId, {
-      status: PositionStatus.CLOSED,
-      closedByRule,
-    })
+
+    const position = await manager.findOneOrFail(Position, positionId)
+    position.operations.push(operation)
+    position.status = PositionStatus.CLOSED
+    position.closedByRule = closedByRule
+
+    await manager.save(position)
   }
 
   // обновляем стейт

@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
 } from 'typeorm'
+import { Operation } from '@tinkoff/invest-openapi-js-sdk'
 
 import { Level } from './Level'
 
@@ -47,6 +48,9 @@ export class Position {
 
   @Column('enum', { enum: PositionClosingRule, nullable: true })
   closedByRule?: PositionClosingRule
+
+  @Column('jsonb', { array: false, default: () => "'[]'" })
+  operations: Operation[]
 
   @CreateDateColumn()
   createdAt: Date
