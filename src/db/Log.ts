@@ -15,7 +15,7 @@ export class Log {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('enum')
+  @Column('enum', { enum: LogType })
   type: LogType
 
   @Column()
