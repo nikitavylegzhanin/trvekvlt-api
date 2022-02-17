@@ -10,7 +10,14 @@ import {
   removePosition,
 } from '../store/positions'
 import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
-import { Level, Position, PositionStatus, PositionClosingRule } from '../db'
+import {
+  Level,
+  Position,
+  PositionStatus,
+  PositionClosingRule,
+  Log,
+  LogType,
+} from '../db'
 
 export const openPosition = async (
   placeOrder: () => Promise<Operation>,
@@ -61,6 +68,17 @@ export const openPosition = async (
     // удаляем позицию и уровень
     store.dispatch(removePosition(0))
     store.dispatch(removeLevel(openLevelId))
+
+    if (process.env.NODE_ENV !== 'test') {
+      const { manager } = getConnection()
+
+      manager.save(
+        manager.create(Log, {
+          type: LogType.ERROR,
+          message: JSON.stringify(error),
+        })
+      )
+    }
   }
 }
 

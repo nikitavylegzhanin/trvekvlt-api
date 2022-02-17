@@ -4,7 +4,7 @@ import { getConnection } from 'typeorm'
 import { ConfigActionType, EditConfigPayload } from './config'
 import { LevelsActionType } from './levels'
 import { TrendsActionType } from './trends'
-import { Log } from '../db'
+import { Log, LogType } from '../db'
 
 const isIgnoredEditConfigPayload = (payload: EditConfigPayload) => {
   const payloadKeys = Object.keys(payload)
@@ -34,7 +34,12 @@ const isIgnoredAction = (action: PayloadAction<any>) => {
 const logMiddleware: Middleware = (_store) => (next) => (action) => {
   if (!isIgnoredAction(action) && process.env.NODE_ENV !== 'test') {
     const { manager } = getConnection()
-    manager.save(manager.create(Log, { message: JSON.stringify(action) }))
+    manager.save(
+      manager.create(Log, {
+        type: LogType.STATE,
+        message: JSON.stringify(action),
+      })
+    )
   }
 
   return next(action)
