@@ -90,7 +90,9 @@ export const closePosition = async (
   closedLevelId?: StoredPosition['closedLevelId']
 ) => {
   // блочим уровень
-  if (disableLevelId) store.dispatch(disableLevel(disableLevelId))
+  if (disableLevelId) {
+    store.dispatch(disableLevel(disableLevelId))
+  }
 
   // изменяем позицию в стейте
   store.dispatch(
@@ -105,18 +107,33 @@ export const closePosition = async (
   )
 
   if (process.env.NODE_ENV !== 'test') {
-    // отправляем заявку
-    const operation = await placeOrder()
-
-    // сохраняем в бд
     const { manager } = getConnection()
 
-    const position = await manager.findOneOrFail(Position, positionId)
-    position.operations.push(operation)
-    position.status = PositionStatus.CLOSED
-    position.closedByRule = closedByRule
+    try {
+      // отправляем заявку
+      const operation = await placeOrder()
 
-    await manager.save(position)
+      // обновляем позицию в бд
+      const position = await manager.findOneOrFail(Position, positionId)
+      position.operations.push(operation)
+      position.status = PositionStatus.CLOSED
+      position.closedByRule = closedByRule
+
+      if (closedLevelId) {
+        const closedLevel = await manager.findOneOrFail(Level, closedLevelId)
+
+        position.closedLevel = closedLevel
+      }
+
+      await manager.save(position)
+    } catch (error) {
+      manager.save(
+        manager.create(Log, {
+          type: LogType.ERROR,
+          message: JSON.stringify(error),
+        })
+      )
+    }
   }
 
   // обновляем стейт
