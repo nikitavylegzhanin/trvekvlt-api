@@ -65,11 +65,37 @@ export const initApp = async ({ manager }: Connection) => {
 
   if (config.isSandbox) {
     await api.sandboxClear()
-    await api.setCurrenciesBalance({ currency: 'USD', balance: 100 })
+    await api.setCurrenciesBalance({ currency: 'USD', balance: 1000 })
+    await api.setPositionBalance({ figi, balance: 100 }) // seems we can't open short positions in the sandbox mode
   }
 
   return api
 }
+
+type BaseOperationProps = {
+  operationType: OperationType
+  figi: string
+  quantity: number
+  price: number
+}
+
+const getBaseOperation = ({
+  operationType,
+  figi,
+  quantity,
+  price,
+}: BaseOperationProps): Operation => ({
+  operationType,
+  figi,
+  quantity,
+  price,
+  id: nanoid(),
+  isMarginCall: false,
+  status: 'Done',
+  currency: 'USD',
+  payment: operationType === 'Buy' ? price * -1 : price,
+  date: new Date().toISOString(),
+})
 
 export const subscribePrice = async (api: InvestSDK) => {
   const state = store.getState()
@@ -104,21 +130,23 @@ export const subscribePrice = async (api: InvestSDK) => {
         (operation) => operation.operationType === operationType
       )
 
-      return operation
+      return (
+        operation ||
+        getBaseOperation({
+          operationType,
+          figi,
+          quantity: lots,
+          price: operationType === 'Buy' ? ask : bid,
+        })
+      )
     }
 
-    return {
+    return getBaseOperation({
       operationType,
       figi,
-      id: nanoid(),
-      isMarginCall: false,
       quantity: lots,
       price: operationType === 'Buy' ? ask : bid,
-      status: 'Done',
-      currency: 'USD',
-      payment: operationType === 'Buy' ? ask * -1 : bid,
-      date: new Date().toISOString(),
-    }
+    })
   }
 
   return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) => {
