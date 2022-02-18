@@ -99,7 +99,7 @@ const getBaseOperation = ({
 
 export const subscribePrice = async (api: InvestSDK) => {
   const state = store.getState()
-  const { figi } = selectConfig(state)
+  const { figi, isSandbox } = selectConfig(state)
 
   let ask = 0,
     bid = 0
@@ -108,6 +108,7 @@ export const subscribePrice = async (api: InvestSDK) => {
     operationType: OperationType
   ): Promise<Operation> => {
     const lots = 1
+    const price = operationType === 'Buy' ? ask : bid
     const order = await api.marketOrder({
       figi,
       operation: operationType,
@@ -130,22 +131,21 @@ export const subscribePrice = async (api: InvestSDK) => {
         (operation) => operation.operationType === operationType
       )
 
-      return (
-        operation ||
-        getBaseOperation({
-          operationType,
-          figi,
-          quantity: lots,
-          price: operationType === 'Buy' ? ask : bid,
-        })
-      )
+      return operation
+        ? { ...operation, price: isSandbox ? price : operation.price } // sdk returns fake value in the Sandbox mode
+        : getBaseOperation({
+            operationType,
+            figi,
+            price,
+            quantity: lots,
+          })
     }
 
     return getBaseOperation({
       operationType,
       figi,
+      price,
       quantity: lots,
-      price: operationType === 'Buy' ? ask : bid,
     })
   }
 
