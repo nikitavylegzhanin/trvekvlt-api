@@ -18,6 +18,7 @@ import {
   Log,
   LogType,
 } from '../db'
+import { sendMessage } from '../notifications'
 
 export const openPosition = async (
   placeOrder: () => Promise<Operation>,
@@ -70,12 +71,16 @@ export const openPosition = async (
     store.dispatch(removeLevel(openLevelId))
 
     if (process.env.NODE_ENV !== 'test') {
-      const { manager } = getConnection()
+      const type = LogType.ERROR
+      const message = JSON.stringify(error)
 
+      sendMessage(type, message)
+
+      const { manager } = getConnection()
       manager.save(
         manager.create(Log, {
-          type: LogType.ERROR,
-          message: JSON.stringify(error),
+          type,
+          message,
         })
       )
     }
@@ -127,10 +132,15 @@ export const closePosition = async (
 
       await manager.save(position)
     } catch (error) {
+      const type = LogType.ERROR
+      const message = JSON.stringify(error)
+
+      sendMessage(type, message)
+
       manager.save(
         manager.create(Log, {
-          type: LogType.ERROR,
-          message: JSON.stringify(error),
+          type,
+          message,
         })
       )
     }

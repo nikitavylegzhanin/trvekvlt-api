@@ -5,6 +5,7 @@ import { ConfigActionType, EditConfigPayload } from './config'
 import { LevelsActionType } from './levels'
 import { TrendsActionType } from './trends'
 import { Log, LogType } from '../db'
+import { sendMessage } from '../notifications'
 
 const isIgnoredEditConfigPayload = (payload: EditConfigPayload) => {
   const payloadKeys = Object.keys(payload)
@@ -33,11 +34,16 @@ const isIgnoredAction = (action: PayloadAction<any>) => {
 
 const logMiddleware: Middleware = (_store) => (next) => (action) => {
   if (!isIgnoredAction(action) && process.env.NODE_ENV !== 'test') {
+    const type = LogType.STATE
+    const message = JSON.stringify(action)
+
+    sendMessage(type, message)
+
     const { manager } = getConnection()
     manager.save(
       manager.create(Log, {
-        type: LogType.STATE,
-        message: JSON.stringify(action),
+        type,
+        message,
       })
     )
   }

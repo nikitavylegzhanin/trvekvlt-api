@@ -12,6 +12,7 @@
     "@tinkoff/invest-openapi-js-sdk": "^1.5.0",
     "apollo-server": "^3.6.1",
     "ramda": "^0.27.1",
+    "telegraf": "^4.7.0",
     "typeorm": "^0.2.41"
   },
   "devDependencies": {
