@@ -1,5 +1,3 @@
-import { pathEq } from 'ramda'
-
 import store from '../store'
 import { PositionWithLevels, StoredPosition } from '../store/positions'
 import { enableLevel, StoredLevel } from '../store/levels'
@@ -61,7 +59,13 @@ export const manageClosingRules = (
   }
 }
 
-export const isTp = pathEq(['isDisabled'], false)
+export const isTp = (
+  nextLevel?: StoredLevel,
+  lastPositionOpenLevel?: StoredLevel
+) =>
+  nextLevel &&
+  !nextLevel.isDisabled &&
+  nextLevel.id !== lastPositionOpenLevel?.id
 
 export const isSlt50Percent = (
   positionClosingRules: StoredPosition['closingRules'],

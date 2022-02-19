@@ -106,7 +106,7 @@ export const runStartegy = (
     const operation = getCloseOperation(lastTrend)
     const placeOrderFn = () => placeOrder(operation)
 
-    if (isTp(nextLevel)) {
+    if (isTp(nextLevel, lastPosition.openLevel)) {
       return closePosition(
         placeOrderFn,
         lastPosition.id,

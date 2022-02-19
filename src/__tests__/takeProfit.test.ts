@@ -202,4 +202,61 @@ describe('Take profit', () => {
       openLevelId: 2,
     })
   })
+
+  test('не закрываем позицию по TP на этом же уровне', async () => {
+    // 3 ------------ |
+    //       ╱╲       | 4
+    // 2 ╱╲-╱--╲----- | 1, 2, 3, 5
+
+    // 1. Открываем позицию в лонг на уровне 2
+    runStartegy(1.9, 2, placeOrder)
+    const position1 = selectLastPosition(store.getState())
+    expect(position1).toMatchObject<Partial<typeof position1>>({
+      openLevelId: 2,
+      closingRules: [
+        PositionClosingRule.SL,
+        PositionClosingRule.TP,
+        PositionClosingRule.MARKET_PHASE_END,
+      ],
+    })
+
+    // 2. Цена поднимается на 40% от уровня открытия → без изменений
+    runStartegy(2.3, 2.4, placeOrder)
+    const position2 = selectLastPosition(store.getState())
+    expect(position2).toMatchObject<Partial<typeof position2>>({
+      openLevelId: 2,
+      closingRules: [
+        PositionClosingRule.SL,
+        PositionClosingRule.TP,
+        PositionClosingRule.MARKET_PHASE_END,
+      ],
+    })
+
+    // 3. Цена падает на уровень открытия → позиция остается открытой
+    runStartegy(1.9, 2, placeOrder)
+    const position3 = selectLastPosition(store.getState())
+    expect(position3.openLevelId).toBe(2)
+    expect(position3.closedByRule).toBeUndefined()
+
+    // 4. Цена поднимается на 50% от уровня открытия → добавляем правило закрытия по SLT_3TICKS
+    runStartegy(2.4, 2.5, placeOrder)
+    const position4 = selectLastPosition(store.getState())
+    expect(position4).toMatchObject<Partial<typeof position4>>({
+      openLevelId: 2,
+      closingRules: [
+        PositionClosingRule.SL,
+        PositionClosingRule.TP,
+        PositionClosingRule.MARKET_PHASE_END,
+        PositionClosingRule.SLT_3TICKS,
+      ],
+    })
+
+    // 5. Цена падает на уровень открытия → закрываем по SLT_3TICKS
+    runStartegy(1.9, 2, placeOrder)
+    const position5 = selectLastPosition(store.getState())
+    expect(position5).toMatchObject<Partial<typeof position5>>({
+      openLevelId: 2,
+      closedByRule: PositionClosingRule.SLT_3TICKS,
+    })
+  })
 })
