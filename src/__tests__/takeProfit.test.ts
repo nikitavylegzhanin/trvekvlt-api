@@ -130,13 +130,23 @@ describe('Take profit', () => {
   })
 
   test('при отскоке от 70% до середины', () => {
-    // 3 ----------------- |
-    // 70%  ╱╲             | 2, 4
-    // 50% ╱  ╲╱╲          | 3
-    // 2 -╱------╲-------- | 1, 5
+    // 3 (23.96) ------------- |
+    // 4 (23.51) ------------- |
+    // 70%          ╱╲         | 2, 4
+    // 50%         ╱  ╲╱╲      | 3
+    // 2 (23.21) -╱------╲---- | 1, 5
+    // 1 (22.99) --------------|
+
+    const levels = [22.99, 23.21, 23.96, 23.51].map((value, key) => ({
+      value,
+      id: key + 1,
+      isDisabled: false,
+    }))
+
+    store.dispatch(initLevels(levels))
 
     // 1. Открываем позицию в лонг на уровне 2
-    runStartegy(1.9, 2, placeOrder)
+    runStartegy(23.2, 23.21, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,
@@ -147,8 +157,8 @@ describe('Take profit', () => {
       ],
     })
 
-    // 2. Цена поднимается на 70% от уровня открытия → доступено закрытие по правилу SLT_50PERCENT
-    runStartegy(2.6, 2.7, placeOrder)
+    // 2. Цена поднимается на 70% (+0.21) от уровня открытия → доступно закрытие по правилу SLT_50PERCENT
+    runStartegy(23.41, 23.42, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 2,
@@ -161,8 +171,8 @@ describe('Take profit', () => {
       ],
     })
 
-    // 3. Цена возвращается на 50% → закрываем позицию и блокируем открытый уровень
-    runStartegy(2.4, 2.5, placeOrder)
+    // 3. Цена возвращается на 50% (+0.15) → закрываем позицию и блокируем открытый уровень
+    runStartegy(23.35, 23.36, placeOrder)
     const position3 = selectLastPosition(store.getState())
     expect(position3).toMatchObject<Partial<typeof position3>>({
       openLevelId: 2,
@@ -177,7 +187,7 @@ describe('Take profit', () => {
     })
 
     // 4. Цена поднимается выше 50% → закрытый уровень доступен к открытию
-    runStartegy(2.5, 2.6, placeOrder)
+    runStartegy(23.38, 23.39, placeOrder)
     const closedLevel4 = selectLevels(store.getState()).find(
       (level) => level.id === 2
     )
@@ -186,7 +196,7 @@ describe('Take profit', () => {
     })
 
     // 5. Цена возвращается на уровень → открываем
-    runStartegy(1.9, 2, placeOrder)
+    runStartegy(23.2, 23.21, placeOrder)
     const position5 = selectLastPosition(store.getState())
     expect(position5).toMatchObject<Partial<typeof position5>>({
       openLevelId: 2,
