@@ -8,7 +8,7 @@ import { runStartegy } from '../strategy'
 
 const placeOrder = jest.fn((data) => data)
 
-describe('Intervals', () => {
+describe('Date intervals', () => {
   const levels = [1, 2, 3, 4, 5].map((value) => ({
     value,
     id: value,
