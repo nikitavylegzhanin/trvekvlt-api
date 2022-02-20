@@ -2,7 +2,7 @@ import InvestSDK, {
   OperationType,
   Operation,
 } from '@tinkoff/invest-openapi-js-sdk'
-import { Connection } from 'typeorm'
+import { Connection, Raw } from 'typeorm'
 import { pick, not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
 import { nanoid } from '@reduxjs/toolkit'
 
@@ -46,6 +46,12 @@ export const initApp = async ({ manager }: Connection) => {
 
   const positions = await manager.find(Position, {
     relations: ['openLevel', 'closedLevel'],
+    where: {
+      createdAt: Raw(
+        (alias) => `${alias} BETWEEN :from AND :to`,
+        getOpenMarketPhaseInterval()
+      ),
+    },
   })
   store.dispatch(
     initPositions(
