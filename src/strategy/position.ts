@@ -18,7 +18,7 @@ import {
   Log,
   LogType,
 } from '../db'
-import { sendMessage } from '../notifications'
+import { sendMessage } from '../telegram'
 
 export const openPosition = async (
   placeOrder: () => Promise<Operation>,

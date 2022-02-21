@@ -5,7 +5,7 @@ import { ConfigActionType, EditConfigPayload } from './config'
 import { LevelsActionType } from './levels'
 import { TrendsActionType } from './trends'
 import { Log, LogType } from '../db'
-import { sendMessage } from '../notifications'
+import { sendMessage } from '../telegram'
 
 const isIgnoredEditConfigPayload = (payload: EditConfigPayload) => {
   const payloadKeys = Object.keys(payload)
