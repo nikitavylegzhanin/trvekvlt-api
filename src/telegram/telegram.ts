@@ -2,6 +2,7 @@ import { Scenes, session, Telegraf } from 'telegraf'
 
 import store from '../store'
 import { editConfig } from '../store/config'
+import { selectLevels } from '../store/levels'
 import newLevelScene from './newLevelScene'
 
 const bot = new Telegraf<Scenes.WizardContext>(process.env.TELEGRAM_TOKEN)
@@ -17,6 +18,11 @@ enum Command {
   LEVEL = 'level',
 }
 
+enum Action {
+  LEVEL_LIST = 'LEVEL_LIST',
+  LEVEL_ADD = 'LEVEL_ADD',
+}
+
 bot.command(Command.START, (ctx) => {
   store.dispatch(editConfig({ isDisabled: false }))
 
@@ -29,7 +35,32 @@ bot.command(Command.STOP, (ctx) => {
   return ctx.reply('Strategy stopped')
 })
 
-bot.command(Command.LEVEL, (ctx) => ctx.scene.enter(newLevelScene.id))
+bot.command(Command.LEVEL, (ctx) => {
+  return ctx.reply('Test', {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: 'List', callback_data: Action.LEVEL_LIST },
+          { text: 'Add', callback_data: Action.LEVEL_ADD },
+        ],
+      ],
+    },
+  })
+})
+
+bot.action(Action.LEVEL_LIST, (ctx) => {
+  const state = store.getState()
+  const levels = selectLevels(state)
+
+  const text = `<pre>${levels
+    .map((level) => level.value)
+    .sort((a, b) => b - a)
+    .join(' ')}</pre>`
+
+  return ctx.reply(text, { parse_mode: 'HTML' })
+})
+
+bot.action(Action.LEVEL_ADD, (ctx) => ctx.scene.enter(newLevelScene.id))
 
 bot.launch()
 
