@@ -1,5 +1,6 @@
 import { Scenes } from 'telegraf'
 import { getConnection } from 'typeorm'
+import { pick } from 'ramda'
 
 import store from '../store'
 import { StoredLevel, selectLevels, addLevels } from '../store/levels'
@@ -55,7 +56,7 @@ const newLevelScene = new Scenes.WizardScene<Scenes.WizardContext<SessionData>>(
       // add level
       const { manager } = getConnection()
       const level = await manager.save(manager.create(Level, { value }))
-      addLevels([level])
+      store.dispatch(addLevels([pick(['id', 'value'], level)]))
 
       await ctx.reply(`Level ${level.id} added successfully ✨`)
       return ctx.scene.leave()
