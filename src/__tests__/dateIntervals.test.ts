@@ -1,3 +1,4 @@
+jest.mock('telegraf')
 import store from '../store'
 import { initLevels } from '../store/levels'
 import { initPositions } from '../store/positions'
