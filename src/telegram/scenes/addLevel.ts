@@ -2,9 +2,9 @@ import { Scenes } from 'telegraf'
 import { getConnection } from 'typeorm'
 import { pick } from 'ramda'
 
-import store from '../store'
-import { StoredLevel, selectLevels, addLevels } from '../store/levels'
-import { Level } from '../db'
+import store from '../../store'
+import { StoredLevel, selectLevels, addLevels } from '../../store/levels'
+import { Level } from '../../db'
 
 const TICK = 0.01
 
@@ -15,8 +15,10 @@ interface SessionData extends Scenes.WizardSessionData {
   message: string
 }
 
-const newLevelScene = new Scenes.WizardScene<Scenes.WizardContext<SessionData>>(
-  'newLevelScene',
+export const addLevelScene = new Scenes.WizardScene<
+  Scenes.WizardContext<SessionData>
+>(
+  'addLevelScene',
   async (ctx) => {
     await ctx.reply('Enter a value for the new level')
 
@@ -66,5 +68,3 @@ const newLevelScene = new Scenes.WizardScene<Scenes.WizardContext<SessionData>>(
     return ctx.scene.leave()
   }
 )
-
-export default newLevelScene

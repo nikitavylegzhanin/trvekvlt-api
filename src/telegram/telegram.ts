@@ -3,13 +3,16 @@ import { Scenes, session, Telegraf } from 'telegraf'
 import store from '../store'
 import { editConfig } from '../store/config'
 import { selectLevels } from '../store/levels'
-import newLevelScene from './newLevelScene'
+import { addLevelScene, removeLevelScene } from './scenes'
 
 const bot = new Telegraf<Scenes.WizardContext>(process.env.TELEGRAM_TOKEN)
 
 bot.use(session())
 
-const stage = new Scenes.Stage<Scenes.WizardContext>([newLevelScene])
+const stage = new Scenes.Stage<Scenes.WizardContext>([
+  addLevelScene,
+  removeLevelScene,
+])
 bot.use(stage.middleware())
 
 enum Command {
@@ -21,6 +24,7 @@ enum Command {
 enum Action {
   LEVEL_LIST = 'LEVEL_LIST',
   LEVEL_ADD = 'LEVEL_ADD',
+  LEVEL_REMOVE = 'LEVEL_REMOVE',
 }
 
 bot.command(Command.START, (ctx) => {
@@ -42,6 +46,7 @@ bot.command(Command.LEVEL, (ctx) => {
         [
           { text: 'List', callback_data: Action.LEVEL_LIST },
           { text: 'Add', callback_data: Action.LEVEL_ADD },
+          { text: 'Remove', callback_data: Action.LEVEL_REMOVE },
         ],
       ],
     },
@@ -60,7 +65,9 @@ bot.action(Action.LEVEL_LIST, (ctx) => {
   return ctx.reply(text, { parse_mode: 'HTML' })
 })
 
-bot.action(Action.LEVEL_ADD, (ctx) => ctx.scene.enter(newLevelScene.id))
+bot.action(Action.LEVEL_ADD, (ctx) => ctx.scene.enter(addLevelScene.id))
+
+bot.action(Action.LEVEL_REMOVE, (ctx) => ctx.scene.enter(removeLevelScene.id))
 
 bot.launch()
 
