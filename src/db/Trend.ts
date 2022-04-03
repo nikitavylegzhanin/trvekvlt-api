@@ -24,7 +24,7 @@ export class Trend {
   @Column('enum', { enum: TrendDirection })
   direction: TrendDirection
 
-  @Column('enum', { enum: TrendType })
+  @Column('enum', { enum: TrendType, default: TrendType.MANUAL })
   type: TrendType
 
   @CreateDateColumn()
