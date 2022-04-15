@@ -138,7 +138,7 @@ describe('SL', () => {
 
     // 1. Short → SL
     runStartegy(21.52, 21.53, placeOrder)
-    runStartegy(21.72, 21.73, placeOrder)
+    runStartegy(21.62, 21.63, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,

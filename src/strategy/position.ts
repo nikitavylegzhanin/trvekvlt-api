@@ -10,23 +10,26 @@ import {
   removePosition,
 } from '../store/positions'
 import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
+import { getPositionNextStatus } from './utils'
 import {
   Level,
   Position,
   PositionStatus,
+  PositionOpeningRule,
   PositionClosingRule,
   Log,
   LogType,
 } from '../db'
 import { sendMessage } from '../telegram'
 
+/**
+ * Открытие новой позиции
+ */
 export const openPosition = async (
   placeOrder: () => Promise<Operation>,
-  openLevelId: StoredLevel['id']
+  openLevelId: StoredLevel['id'],
+  openingRule: PositionOpeningRule
 ) => {
-  // блочим уровень
-  store.dispatch(disableLevel(openLevelId))
-
   // добавляем позицию в стейт
   store.dispatch(addPosition({ openLevelId }))
 
@@ -37,7 +40,8 @@ export const openPosition = async (
           positionId: 0,
           data: {
             id: Math.floor(Math.random() * 666),
-            status: PositionStatus.OPEN,
+            status: PositionStatus.OPEN_PARTIAL,
+            openedByRules: [openingRule],
           },
         })
       )
@@ -84,6 +88,74 @@ export const openPosition = async (
         })
       )
     }
+  }
+}
+
+/**
+ * Усреденение позиции
+ */
+export const averagingPosition = async (
+  placeOrder: () => Promise<Operation>,
+  storedPosition: StoredPosition,
+  openingRule: PositionOpeningRule
+) => {
+  const openedByRules = [...storedPosition.openedByRules, openingRule]
+  const status = getPositionNextStatus(openedByRules)
+
+  // блочим уровень, если позиция открыта полностью
+  if (status === PositionStatus.OPEN_FULL) {
+    store.dispatch(disableLevel(storedPosition.openLevelId))
+  }
+
+  // обновляем позицию в стейте
+  store.dispatch(
+    updatePosition({
+      positionId: storedPosition.id,
+      data: {
+        status,
+        openedByRules,
+      },
+    })
+  )
+
+  if (process.env.NODE_ENV === 'test') return
+
+  const { manager } = getConnection()
+
+  try {
+    // отправляем заявку
+    const operation = await placeOrder()
+
+    // обновляем позицию в бд
+    const position = await manager.findOneOrFail(Position, storedPosition.id)
+    position.operations.push(operation)
+    position.status = status
+    position.openedByRules = openedByRules
+
+    await manager.save(position)
+  } catch (error) {
+    // откратываем позицию в стейте
+    store.dispatch(
+      updatePosition({
+        positionId: storedPosition.id,
+        data: {
+          status: storedPosition.status,
+          openedByRules: storedPosition.openedByRules,
+        },
+      })
+    )
+
+    const type = LogType.ERROR
+    const message = JSON.stringify(error)
+
+    sendMessage(type, message)
+
+    manager.save(
+      manager.create(Log, {
+        type,
+        message,
+      })
+    )
   }
 }
 

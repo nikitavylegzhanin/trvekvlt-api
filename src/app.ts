@@ -56,7 +56,10 @@ export const initApp = async ({ manager }: Connection) => {
   store.dispatch(
     initPositions(
       positions.map((position) => ({
-        ...pick(['id', 'closingRules', 'closedByRule', 'status'], position),
+        ...pick(
+          ['id', 'closingRules', 'closedByRule', 'status', 'openedByRules'],
+          position
+        ),
         openLevelId: position.openLevel?.id,
         closedLevelId: position.closedLevel?.id,
       }))

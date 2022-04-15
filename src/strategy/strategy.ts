@@ -1,4 +1,5 @@
 import { OperationType, Operation } from '@tinkoff/invest-openapi-js-sdk'
+import { or } from 'ramda'
 
 import store from '../store'
 import {
@@ -10,7 +11,7 @@ import { selectLevels } from '../store/levels'
 import { editConfig, selectConfig } from '../store/config'
 import { selectLastTrend } from '../store/trends'
 import { PositionClosingRule } from '../db/Position'
-import { openPosition, closePosition } from './position'
+import { openPosition, averagingPosition, closePosition } from './position'
 import { isTradingInterval } from './marketPhase'
 import {
   manageClosingRules,
@@ -18,6 +19,7 @@ import {
   isSlt50Percent,
   isSlt3Ticks,
   isSl,
+  getNextOpeningRule,
 } from './rules'
 import { addCorrectionTrend } from './trend'
 import {
@@ -26,12 +28,14 @@ import {
   getPositionProfit,
   isLastPositionClosed,
   isLastPositionOpen,
+  isLastPositionOpenPartially,
   getLastClosedPosition,
   isCorrectionTrend,
   isLastLevel,
   getNextLevel,
   getOpenOperation,
   getCloseOperation,
+  isOpeningRuleAvailable,
 } from './utils'
 
 type PlaceOrder = (operation: OperationType) => Promise<Operation>
@@ -53,7 +57,7 @@ export const runStartegy = (
 
   if (!isTradingInterval(date)) {
     // закрываем позицию по окночании торговой фазы
-    if (isLastPositionOpen(lastPosition)) {
+    if (isLastPositionOpen(lastPosition?.status)) {
       const operation = getCloseOperation(lastTrend)
 
       closePosition(
@@ -91,18 +95,41 @@ export const runStartegy = (
   }
 
   const nextLevel = getNextLevel(levels, lastPrice)
+  const isClosed = isLastPositionClosed(lastPosition)
+  const isOpenPartially = isLastPositionOpenPartially(lastPosition)
 
-  // открываем новую позицию от следующего уровня если нет открытых позиций
-  if (nextLevel && isLastPositionClosed(lastPosition)) {
+  if (nextLevel && or(isClosed, isOpenPartially)) {
     if (!nextLevel.isDisabled && !isLastLevel(nextLevel.id, levels)) {
+      // добавляем только если следующее правило открытия доступно
       const operation = getOpenOperation(lastTrend)
+      const openingRule = getNextOpeningRule(
+        lastPrice,
+        nextLevel.value,
+        operation
+      )
 
-      return openPosition(() => placeOrder(operation), nextLevel.id)
+      if (isOpeningRuleAvailable(openingRule, lastPosition)) {
+        // усредняем если позиция не закрыта
+        if (isOpenPartially) {
+          return averagingPosition(
+            () => placeOrder(operation),
+            lastPosition,
+            openingRule
+          )
+        }
+
+        // иначе открываем новую
+        return openPosition(
+          () => placeOrder(operation),
+          nextLevel.id,
+          openingRule
+        )
+      }
     }
   }
 
   // закрываем открытую позицию по tp, slt, sl
-  if (isLastPositionOpen(lastPosition)) {
+  if (isLastPositionOpen(lastPosition?.status)) {
     const operation = getCloseOperation(lastTrend)
     const placeOrderFn = () => placeOrder(operation)
 

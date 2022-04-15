@@ -1,7 +1,9 @@
+import { OperationType } from '@tinkoff/invest-openapi-js-sdk'
+
 import store from '../store'
 import { PositionWithLevels, StoredPosition } from '../store/positions'
 import { enableLevel, StoredLevel } from '../store/levels'
-import { PositionClosingRule } from '../db/Position'
+import { PositionClosingRule, PositionOpeningRule } from '../db/Position'
 import { updatePositionClosingRules } from './position'
 import { isLastPositionOpen } from './utils'
 
@@ -10,6 +12,8 @@ enum Distance {
   NOT_BAD = 0.5,
   BAD = -0.5,
 }
+
+export const LEVEL_DISTANCE = 0.03
 
 const isAbleToCloseBySlt50 = (
   closingRules: PositionWithLevels['closingRules']
@@ -36,7 +40,7 @@ export const manageClosingRules = (
     }
 
     if (
-      isLastPositionOpen(lastPosition) &&
+      isLastPositionOpen(lastPosition.status) &&
       !isAbleToCloseBySlt3Ticks(lastPosition.closingRules)
     ) {
       // разрешим закрываться в 0
@@ -46,7 +50,7 @@ export const manageClosingRules = (
 
   if (
     distance >= Distance.GOOD &&
-    isLastPositionOpen(lastPosition) &&
+    isLastPositionOpen(lastPosition.status) &&
     !isAbleToCloseBySlt50(lastPosition.closingRules)
   ) {
     // рядом со следующим уровнем разрешим закрываться в половину прибыли
@@ -90,3 +94,32 @@ export const isSl = (
   positionClosingRules.includes(PositionClosingRule.SL) &&
   positionProfit < 0 &&
   distance >= Math.abs(Distance.BAD)
+
+/**
+ * Получить правило для открытия/усреднения позиции
+ */
+export const getNextOpeningRule = (
+  price: number,
+  levelValue: number,
+  operation: OperationType
+) => {
+  const isLong = operation === 'Buy'
+
+  if (levelValue === price) {
+    return PositionOpeningRule['ON_LEVEL']
+  }
+
+  if (price === levelValue - LEVEL_DISTANCE) {
+    return isLong
+      ? PositionOpeningRule['BEFORE_LEVEL_3TICKS']
+      : PositionOpeningRule['AFTER_LEVEL_3TICKS']
+  }
+
+  if (price === levelValue + LEVEL_DISTANCE) {
+    return isLong
+      ? PositionOpeningRule['AFTER_LEVEL_3TICKS']
+      : PositionOpeningRule['BEFORE_LEVEL_3TICKS']
+  }
+
+  return null
+}

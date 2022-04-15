@@ -12,7 +12,8 @@ import { Level } from './Level'
 
 export enum PositionStatus {
   OPENING = 'OPENING',
-  OPEN = 'OPEN',
+  OPEN_PARTIAL = 'OPEN_PARTIAL',
+  OPEN_FULL = 'OPEN_FULL',
   CLOSING = 'CLOSING',
   CLOSED = 'CLOSED',
 }
@@ -31,13 +32,25 @@ export const DEFAULT_CLOSING_RULES = [
   PositionClosingRule.MARKET_PHASE_END,
 ]
 
+export enum PositionOpeningRule {
+  BEFORE_LEVEL_3TICKS = 'BEFORE_LEVEL_3TICKS',
+  ON_LEVEL = 'ON_LEVEL',
+  AFTER_LEVEL_3TICKS = 'AFTER_LEVEL_3TICKS',
+}
+
 @Entity()
 export class Position {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('enum', { enum: PositionStatus, default: PositionStatus.OPEN })
+  @Column('enum', { enum: PositionStatus, default: PositionStatus.OPENING })
   status: PositionStatus
+
+  @Column('enum', { enum: PositionOpeningRule, array: true, default: [] })
+  openedByRules: PositionOpeningRule[]
+
+  @Column('jsonb', { array: false, default: () => "'[]'" })
+  operations: Operation[]
 
   @Column('enum', {
     enum: PositionClosingRule,
@@ -48,9 +61,6 @@ export class Position {
 
   @Column('enum', { enum: PositionClosingRule, nullable: true })
   closedByRule?: PositionClosingRule
-
-  @Column('jsonb', { array: false, default: () => "'[]'" })
-  operations: Operation[]
 
   @CreateDateColumn()
   createdAt: Date

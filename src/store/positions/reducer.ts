@@ -18,6 +18,7 @@ export type StoredPosition = {
   status: Position['status']
   closingRules: Position['closingRules']
   openLevelId: Level['id']
+  openedByRules: Position['openedByRules']
   closedByRule?: Position['closedByRule']
   closedLevelId?: Level['id']
 }
@@ -31,6 +32,7 @@ const reducer = createReducer<StoredPosition[]>([], (builder) =>
         id: 0,
         status: PositionStatus.OPENING,
         closingRules: DEFAULT_CLOSING_RULES,
+        openedByRules: [],
       })
     )
     .addCase(updatePosition, (state, action) =>
