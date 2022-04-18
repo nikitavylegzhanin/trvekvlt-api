@@ -12,7 +12,7 @@ import { editConfig, selectConfig } from '../store/config'
 import { selectLastTrend } from '../store/trends'
 import { PositionClosingRule } from '../db/Position'
 import { openPosition, averagingPosition, closePosition } from './position'
-import { isTradingInterval } from './marketPhase'
+import { isTradingInterval, isTimeBreak } from './marketPhase'
 import {
   manageClosingRules,
   isTp,
@@ -75,6 +75,22 @@ export const runStartegy = (
     }
 
     // пропускаем торговлю вне торговой фазы
+    return
+  }
+
+  if (isTimeBreak(date)) {
+    // закрываем позицию за 5 минут до клиринга
+    if (isLastPositionOpen(lastPosition?.status)) {
+      const operation = getCloseOperation(lastTrend)
+
+      closePosition(
+        () => placeOrder(operation),
+        lastPosition.id,
+        PositionClosingRule.TIME_BREAK
+      )
+    }
+
+    // пропускаем торговлю во время клиринга
     return
   }
 
