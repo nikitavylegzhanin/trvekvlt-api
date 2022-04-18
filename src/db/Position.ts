@@ -24,6 +24,7 @@ export enum PositionClosingRule {
   SLT_3TICKS = 'SLT_3TICKS',
   SLT_50PERCENT = 'SLT_50PERCENT',
   MARKET_PHASE_END = 'MARKET_PHASE_END',
+  TIME_BREAK = 'TIME_BREAK',
 }
 
 export const DEFAULT_CLOSING_RULES = [
