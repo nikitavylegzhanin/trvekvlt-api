@@ -36,6 +36,7 @@ import {
   getOpenOperation,
   getCloseOperation,
   isOpeningRuleAvailable,
+  isDowntrend,
 } from './utils'
 
 type PlaceOrder = (operation: OperationType) => Promise<Operation>
@@ -82,9 +83,11 @@ export const runStartegy = (
 
   const levels = selectLevels(state)
   const lastPrice = getLastPrice(ask, bid, lastTrend)
+  const isShort = isDowntrend(lastTrend)
   const distance = getPriceDistanceToPrevLevel(
     levels,
     lastPrice,
+    isShort,
     lastPosition?.openLevel,
     lastPosition?.closedLevel
   )
@@ -154,7 +157,12 @@ export const runStartegy = (
 
     // slt 3ticks
     if (
-      isSlt3Ticks(lastPosition.closingRules, lastPosition.openLevel, lastPrice)
+      isSlt3Ticks(
+        lastPosition.closingRules,
+        lastPosition.openLevel,
+        lastPrice,
+        isShort
+      )
     ) {
       return closePosition(
         placeOrderFn,

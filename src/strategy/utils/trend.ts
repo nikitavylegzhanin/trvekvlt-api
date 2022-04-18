@@ -7,6 +7,8 @@ import { StoredTrend } from '../../store/trends'
 
 export const isCorrectionTrend = propEq('type', TrendType.CORRECTION)
 
+export const isDowntrend = propEq('direction', TrendDirection.DOWN)
+
 export const getCorrectionTrendDirection = ifElse<
   StoredTrend[],
   TrendDirection,

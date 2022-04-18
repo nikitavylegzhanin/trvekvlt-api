@@ -13,7 +13,7 @@ const placeOrder = jest.fn((data) => data)
 describe('SL', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
-  const levels = [1, 2, 3, 4, 5].map((value) => ({
+  const levels = [0.5, 1, 2, 3, 4, 5].map((value) => ({
     value,
     id: value,
     isDisabled: false,
@@ -162,7 +162,7 @@ describe('SL', () => {
 
     // 3. Long → SL
     runStartegy(22.09, 22.1, placeOrder)
-    runStartegy(21.91, 21.92, placeOrder)
+    runStartegy(21.89, 21.9, placeOrder)
     const position3 = selectLastPosition(store.getState())
     expect(position3).toMatchObject<Partial<typeof position3>>({
       openLevelId: 4,

@@ -12,7 +12,7 @@ const placeOrder = jest.fn((data) => data)
 describe('Correction', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
-  const levels = [1, 2, 3].map((value) => ({
+  const levels = [0.5, 1, 2, 3].map((value) => ({
     value,
     id: value,
     isDisabled: false,
@@ -37,7 +37,7 @@ describe('Correction', () => {
     expect(lastPosition2.closedByRule).toBeUndefined()
 
     // 3. Закрываем по стопу
-    runStartegy(1.4, 1.5, placeOrder)
+    runStartegy(1.48, 1.49, placeOrder)
     const lastPosition3 = selectLastPosition(store.getState())
     expect(lastPosition3).toMatchObject<Partial<typeof lastPosition3>>({
       openLevelId: 2,
