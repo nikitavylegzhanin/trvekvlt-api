@@ -20,6 +20,7 @@ import {
   isSlt3Ticks,
   isSl,
   getNextOpeningRule,
+  isAbleToCloseBySlt3Ticks,
 } from './rules'
 import { addCorrectionTrend } from './trend'
 import {
@@ -102,7 +103,11 @@ export const runStartegy = (
   const isOpenPartially = isLastPositionOpenPartially(lastPosition)
 
   if (nextLevel && or(isClosed, isOpenPartially)) {
-    if (!nextLevel.isDisabled && !isLastLevel(nextLevel.id, levels)) {
+    if (
+      !nextLevel.isDisabled &&
+      !isLastLevel(nextLevel.id, levels) &&
+      (isClosed || !isAbleToCloseBySlt3Ticks(lastPosition.closingRules))
+    ) {
       // добавляем только если следующее правило открытия доступно
       const operation = getOpenOperation(lastTrend)
       const openingRule = getNextOpeningRule(

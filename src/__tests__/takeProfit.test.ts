@@ -92,9 +92,8 @@ describe('Take profit', () => {
     //    ╱ ╲             | 2, 3
     // 2 ╱---╲-╱--------- | 1, 4
 
-    // 1. Открываем позицию в лонг на уровне 2
+    // 1. Открываем позицию в лонг на уровне 2 и проскакиваем AFTER_LEVEL_3TICKS
     runStartegy(1.99, 2, placeOrder)
-    runStartegy(2.02, 2.03, placeOrder) // открываем по AFTER_LEVEL_3TICKS, чтобы закрыться по стопу
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,
@@ -103,10 +102,7 @@ describe('Take profit', () => {
         PositionClosingRule.TP,
         PositionClosingRule.MARKET_PHASE_END,
       ],
-      openedByRules: [
-        PositionOpeningRule.ON_LEVEL,
-        PositionOpeningRule.AFTER_LEVEL_3TICKS,
-      ],
+      openedByRules: [PositionOpeningRule.ON_LEVEL],
     })
 
     // 2. Цена поднимается на 50% от уровня открытия → уровень доступен для закрытия в 0

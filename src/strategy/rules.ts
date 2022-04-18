@@ -19,7 +19,7 @@ const isAbleToCloseBySlt50 = (
   closingRules: PositionWithLevels['closingRules']
 ) => closingRules.includes(PositionClosingRule.SLT_50PERCENT)
 
-const isAbleToCloseBySlt3Ticks = (
+export const isAbleToCloseBySlt3Ticks = (
   closingRules: PositionWithLevels['closingRules']
 ) => closingRules.includes(PositionClosingRule.SLT_3TICKS)
 
