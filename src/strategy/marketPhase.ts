@@ -1,8 +1,8 @@
 type MarketPhaseInterval = [number, number, number, number]
 
 const OPEN_MARKET_PHASE_INTERVALS = {
-  start: [17, 49, 59, 0] as MarketPhaseInterval,
-  end: [22, 59, 59, 0] as MarketPhaseInterval,
+  start: [16, 49, 59, 0] as MarketPhaseInterval,
+  end: [21, 59, 59, 0] as MarketPhaseInterval,
 }
 
 export const isTradingInterval = (date: Date) => {
