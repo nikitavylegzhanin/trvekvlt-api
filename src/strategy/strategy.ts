@@ -78,21 +78,8 @@ export const runStartegy = (
     return
   }
 
-  if (isTimeBreak(date)) {
-    // закрываем позицию за 5 минут до клиринга
-    if (isLastPositionOpen(lastPosition?.status)) {
-      const operation = getCloseOperation(lastTrend)
-
-      closePosition(
-        () => placeOrder(operation),
-        lastPosition.id,
-        PositionClosingRule.TIME_BREAK
-      )
-    }
-
-    // пропускаем торговлю во время клиринга
-    return
-  }
+  // пропускаем торговлю во время клиринга
+  if (isTimeBreak(date)) return
 
   if (!lastTrend) {
     throw new Error('Last trend is undefined')

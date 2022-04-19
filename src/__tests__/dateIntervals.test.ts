@@ -51,31 +51,28 @@ describe('Date intervals', () => {
     expect(lastPosition3).toBeUndefined()
   })
 
-  test('закрывает позицию за 5 минут до клиринга (13:55-14:05)', () => {
-    // 1. Открываем позицию
-    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 13, 45).getTime())
+  test('пропускаем торговую логику во время клиринга (13:55-14:05)', () => {
+    // 1. Открываем позицию до клиринга
+    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 13).getTime())
     runStartegy(1.99, 2, placeOrder)
     const lastPosition1 = selectLastPosition(store.getState())
     expect(lastPosition1.openLevelId).toBe(2)
+    expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
 
-    // 2. При приближении к клирингу закрываем позицию
-    jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 13, 50).getTime())
-    runStartegy(2, 2.01, placeOrder)
-    const lastPosition2 = selectLastPosition(store.getState())
-    expect(lastPosition2.closedByRule).toBe(PositionClosingRule.TIME_BREAK)
-
-    // 3. Во время клиринга позиции не открываем
+    // 2. Во время клиринга не торгуем
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 13, 55).getTime())
-    runStartegy(1.99, 2, placeOrder)
-    const lastPosition3 = selectLastPosition(store.getState())
-    expect(lastPosition3.status).toBe(PositionStatus.CLOSED)
+    runStartegy(2.99, 3, placeOrder)
+    const lastPosition2 = selectLastPosition(store.getState())
+    expect(lastPosition2.openLevelId).toBe(2)
+    expect(lastPosition2.status).toBe(PositionStatus.OPEN_PARTIAL)
 
-    // 4. После клиринга открываем позиции
+    // 3. После клиринга закрываем
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 14, 6).getTime())
-    runStartegy(1.99, 2, placeOrder)
-    const lastPosition4 = selectLastPosition(store.getState())
-    expect(lastPosition4.openLevelId).toBe(2)
-    expect(lastPosition4.status).toBe(PositionStatus.OPEN_PARTIAL)
+    runStartegy(2.99, 3, placeOrder)
+    const lastPosition3 = selectLastPosition(store.getState())
+    expect(lastPosition3.openLevelId).toBe(2)
+    expect(lastPosition3.status).toBe(PositionStatus.CLOSED)
+    expect(lastPosition3.closedByRule).toBe(PositionClosingRule.TP)
   })
 
   test('закрывает позицию и обнуляет историю по окончании рыночной фазы', () => {
