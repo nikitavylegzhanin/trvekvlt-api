@@ -1,7 +1,7 @@
-import { Operation } from '@tinkoff/invest-openapi-js-sdk'
 import { getConnection } from 'typeorm'
 import { pick } from 'ramda'
 
+import { Order } from '../api'
 import store from '../store'
 import {
   StoredPosition,
@@ -26,7 +26,7 @@ import { sendMessage } from '../telegram'
  * Открытие новой позиции
  */
 export const openPosition = async (
-  placeOrder: () => Promise<Operation>,
+  placeOrder: () => Promise<Order>,
   openLevelId: StoredLevel['id'],
   openingRule: PositionOpeningRule
 ) => {
@@ -50,13 +50,18 @@ export const openPosition = async (
     }
 
     // отправляем заявку
-    const operation = await placeOrder()
+    const order = await placeOrder()
 
     // сохраняем в бд
     const { manager } = getConnection()
     const openLevel = await manager.findOneOrFail(Level, openLevelId) // роняем при расхождении в уровнях
     const position = await manager.save(
-      manager.create(Position, { openLevel, operations: [operation] })
+      manager.create(Position, {
+        openLevel,
+        status: PositionStatus.OPEN_PARTIAL,
+        openedByRules: [openingRule],
+        orders: [order],
+      })
     )
 
     // обновляем данные позиции
@@ -95,7 +100,7 @@ export const openPosition = async (
  * Усреденение позиции
  */
 export const averagingPosition = async (
-  placeOrder: () => Promise<Operation>,
+  placeOrder: () => Promise<Order>,
   storedPosition: StoredPosition,
   openingRule: PositionOpeningRule
 ) => {
@@ -124,13 +129,13 @@ export const averagingPosition = async (
 
   try {
     // отправляем заявку
-    const operation = await placeOrder()
+    const order = await placeOrder()
 
     // обновляем позицию в бд
     const position = await manager.findOneOrFail(Position, storedPosition.id)
-    position.operations.push(operation)
     position.status = status
     position.openedByRules = openedByRules
+    position.orders.push(order)
 
     await manager.save(position)
   } catch (error) {
@@ -160,7 +165,7 @@ export const averagingPosition = async (
 }
 
 export const closePosition = async (
-  placeOrder: () => Promise<Operation>,
+  placeOrder: () => Promise<Order>,
   positionId: StoredPosition['id'],
   closedByRule: StoredPosition['closedByRule'],
   disableLevelId?: StoredLevel['id'],
@@ -188,13 +193,13 @@ export const closePosition = async (
 
     try {
       // отправляем заявку
-      const operation = await placeOrder()
+      const order = await placeOrder()
 
       // обновляем позицию в бд
       const position = await manager.findOneOrFail(Position, positionId)
-      position.operations.push(operation)
       position.status = PositionStatus.CLOSED
       position.closedByRule = closedByRule
+      position.orders.push(order)
 
       if (closedLevelId) {
         const closedLevel = await manager.findOneOrFail(Level, closedLevelId)

@@ -1,5 +1,3 @@
-import { OperationType } from '@tinkoff/invest-openapi-js-sdk'
-
 import store from '../store'
 import { PositionWithLevels, StoredPosition } from '../store/positions'
 import { enableLevel, StoredLevel } from '../store/levels'
@@ -107,9 +105,9 @@ export const isSl = (
 export const getNextOpeningRule = (
   price: number,
   levelValue: number,
-  operation: OperationType
+  operation: 1 | 2
 ) => {
-  const isLong = operation === 'Buy'
+  const isLong = operation === 1
 
   if (levelValue === price) {
     return PositionOpeningRule['ON_LEVEL']

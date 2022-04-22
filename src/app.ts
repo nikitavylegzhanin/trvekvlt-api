@@ -1,19 +1,20 @@
-import InvestSDK, {
-  OperationType,
-  Operation,
-} from '@tinkoff/invest-openapi-js-sdk'
 import { Connection, Raw } from 'typeorm'
 import { pick, not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
-import { nanoid } from '@reduxjs/toolkit'
 
+import {
+  getInstrument,
+  marketDataStream,
+  getSandboxAccountId,
+  placeOrder,
+} from './api'
 import store from './store'
 import { initLevels, addLevels } from './store/levels'
 import { initTrends } from './store/trends'
 import { initPositions } from './store/positions'
 import { Level, Trend, Position } from './db'
-import { selectConfig, editConfig } from './store/config'
-import { runStartegy } from './strategy'
+import { editConfig } from './store/config'
 import { getOpenMarketPhaseInterval } from './strategy/marketPhase'
+import { runStartegy } from './strategy'
 
 const getRelatedLevels = pipe(
   reduce<Position, Level[]>(
@@ -24,16 +25,8 @@ const getRelatedLevels = pipe(
   uniq
 )
 
-const getApiConfig = (isSandbox: boolean) => ({
-  apiURL: process.env[isSandbox ? 'API_URL_SANDBOX' : 'API_URL'],
-  secretToken: process.env[isSandbox ? 'API_TOKEN_SANDBOX' : 'API_TOKEN'],
-  socketURL: process.env.API_URL_WS,
-})
-
-export const initApp = async ({ manager }: Connection) => {
-  const config = selectConfig(store.getState())
-  const api = new InvestSDK(getApiConfig(config.isSandbox))
-  const { figi } = await api.searchOne({ ticker: config.ticker })
+export const init = async ({ manager }: Connection) => {
+  const { figi } = await getInstrument('GTHX', 'share')
 
   store.dispatch(editConfig({ figi }))
 
@@ -72,102 +65,59 @@ export const initApp = async ({ manager }: Connection) => {
     store.dispatch(addLevels(relatedLevels.map(pick(['id', 'value']))))
   }
 
-  if (config.isSandbox) {
-    await api.sandboxClear()
-    await api.setCurrenciesBalance({ currency: 'USD', balance: 1000 })
-    await api.setPositionBalance({ figi, balance: 100 }) // seems we can't open short positions in the sandbox mode
-  }
-
-  return api
+  return figi
 }
 
-type BaseOperationProps = {
-  operationType: OperationType
-  figi: string
-  quantity: number
+type Order = {
   price: number
+  quantity: number
 }
 
-const getBaseOperation = ({
-  operationType,
-  figi,
-  quantity,
-  price,
-}: BaseOperationProps): Operation => ({
-  operationType,
-  figi,
-  quantity,
-  price,
-  id: nanoid(),
-  isMarginCall: false,
-  status: 'Done',
-  currency: 'USD',
-  payment: operationType === 'Buy' ? price * -1 : price,
-  date: new Date().toISOString(),
+const parseOrder = (data: any): Order => ({
+  price: Number.parseFloat(
+    (parseInt(data?.price?.units) + data?.price?.nano / 1000000000).toFixed(2)
+  ),
+  quantity: Number.parseInt(data?.quantity),
 })
 
-export const subscribePrice = async (api: InvestSDK) => {
-  const state = store.getState()
-  const { figi, isSandbox } = selectConfig(state)
+export const run = async (figi: string) => {
+  const accountId = await getSandboxAccountId()
 
-  let ask = 0,
-    bid = 0
+  const placeOrderByDirection = (direction: 1 | 2) =>
+    placeOrder(figi, 1, direction, accountId)
 
-  const placeOrder = async (
-    operationType: OperationType
-  ): Promise<Operation> => {
-    const lots = 1
-    const price = operationType === 'Buy' ? ask : bid
-    const order = await api.marketOrder({
-      figi,
-      operation: operationType,
-      lots,
-    })
+  marketDataStream.on('error', console.error)
 
-    if (order.rejectReason) {
-      throw new Error(order.rejectReason)
-    }
+  let bidPrice = 0,
+    askPrice = 0,
+    isTransaction = false
 
-    if (order.status === 'Fill') {
-      const openMarketPhaseInterval = getOpenMarketPhaseInterval()
-
-      const { operations } = await api.operations({
-        ...openMarketPhaseInterval,
-        figi,
-      })
-
-      const [operation] = operations.filter(
-        (operation) => operation.operationType === operationType
-      )
-
-      return operation
-        ? { ...operation, price: isSandbox ? price : operation.price } // sdk returns fake value in the Sandbox mode
-        : getBaseOperation({
-            operationType,
-            figi,
-            price,
-            quantity: lots,
-          })
-    }
-
-    return getBaseOperation({
-      operationType,
-      figi,
-      price,
-      quantity: lots,
-    })
+  const goNext = () => {
+    isTransaction = false
   }
 
-  return api.orderbook({ figi, depth: 1 }, ({ asks, bids }) => {
-    const [lastAsk] = asks[0]
-    const [lastBid] = bids[0]
+  marketDataStream.on('data', async (data) => {
+    if (!data?.payload || isTransaction) return
 
-    // обрабатываем торговую логику при изменении цены
-    if (ask !== lastAsk || bid !== lastBid) {
-      ask = lastAsk
-      bid = lastBid
+    if (data.payload === 'orderbook') {
+      const lastBid = parseOrder(data?.orderbook?.bids[0])
+      const lastAsk = parseOrder(data?.orderbook?.asks[0])
 
-      runStartegy(ask, bid, placeOrder)
+      // обрабатываем торговую логику при изменении цены
+      if (bidPrice !== lastBid.price || askPrice !== lastAsk.price) {
+        bidPrice = lastBid.price
+        askPrice = lastAsk.price
+        isTransaction = true
+
+        return runStartegy(bidPrice, askPrice, placeOrderByDirection, goNext)
+      }
     }
+  })
+
+  marketDataStream.write({
+    subscribeOrderBookRequest: {
+      instruments: [{ figi, depth: 1 }],
+      subscriptionAction: 'SUBSCRIPTION_ACTION_SUBSCRIBE',
+    },
   })
 }
