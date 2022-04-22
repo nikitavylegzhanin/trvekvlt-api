@@ -1,4 +1,3 @@
-import { OperationType, Operation } from '@tinkoff/invest-openapi-js-sdk'
 import { or } from 'ramda'
 
 import store from '../store'
@@ -39,19 +38,21 @@ import {
   isOpeningRuleAvailable,
   isDowntrend,
 } from './utils'
+import { Order } from '../api'
 
-type PlaceOrder = (operation: OperationType) => Promise<Operation>
+type PlaceOrderByDirection = (direction: 1 | 2) => Promise<Order>
 
-export const runStartegy = (
-  ask: number,
+export const runStartegy = async (
   bid: number,
-  placeOrder: PlaceOrder
+  ask: number,
+  placeOrder: PlaceOrderByDirection,
+  goNext: VoidFunction
 ) => {
   const state = store.getState()
   const config = selectConfig(state)
 
   // пропускаем торговлю если движок выключен
-  if (config.isDisabled) return
+  if (config.isDisabled) return goNext()
 
   const date = new Date()
   const lastPosition = selectLastPositionWithLevels(state)
@@ -62,7 +63,7 @@ export const runStartegy = (
     if (isLastPositionOpen(lastPosition?.status)) {
       const operation = getCloseOperation(lastTrend)
 
-      closePosition(
+      await closePosition(
         () => placeOrder(operation),
         lastPosition.id,
         PositionClosingRule.MARKET_PHASE_END
@@ -75,11 +76,11 @@ export const runStartegy = (
     }
 
     // пропускаем торговлю вне торговой фазы
-    return
+    return goNext()
   }
 
   // пропускаем торговлю во время клиринга
-  if (isTimeBreak(date)) return
+  if (isTimeBreak(date)) return goNext()
 
   if (!lastTrend) {
     throw new Error('Last trend is undefined')
@@ -130,11 +131,13 @@ export const runStartegy = (
         }
 
         // иначе открываем новую
-        return openPosition(
+        await openPosition(
           () => placeOrder(operation),
           nextLevel.id,
           openingRule
         )
+
+        return goNext()
       }
     }
   }
@@ -145,22 +148,26 @@ export const runStartegy = (
     const placeOrderFn = () => placeOrder(operation)
 
     if (isTp(nextLevel, lastPosition.openLevel)) {
-      return closePosition(
+      await closePosition(
         placeOrderFn,
         lastPosition.id,
         PositionClosingRule.TP,
         nextLevel.id,
         nextLevel.id
       )
+
+      return goNext()
     }
 
     if (isSlt50Percent(lastPosition.closingRules, distance)) {
-      return closePosition(
+      await closePosition(
         placeOrderFn,
         lastPosition.id,
         PositionClosingRule.SLT_50PERCENT,
         lastPosition.openLevelId
       )
+
+      return goNext()
     }
 
     // slt 3ticks
@@ -172,12 +179,14 @@ export const runStartegy = (
         isShort
       )
     ) {
-      return closePosition(
+      await closePosition(
         placeOrderFn,
         lastPosition.id,
         PositionClosingRule.SLT_3TICKS,
         lastPosition.openLevelId
       )
+
+      return goNext()
     }
 
     // sl
@@ -187,11 +196,13 @@ export const runStartegy = (
       lastPrice
     )
     if (isSl(lastPosition.closingRules, positionProfit, distance)) {
-      closePosition(placeOrderFn, lastPosition.id, PositionClosingRule.SL)
+      await closePosition(placeOrderFn, lastPosition.id, PositionClosingRule.SL)
 
       // стоп на коррекции → выключаем движок
       if (isCorrectionTrend(lastTrend)) {
-        return store.dispatch(editConfig({ isDisabled: true }))
+        store.dispatch(editConfig({ isDisabled: true }))
+
+        return goNext()
       }
 
       // 2 стопа подряд → коррекция
@@ -203,4 +214,7 @@ export const runStartegy = (
       }
     }
   }
+
+  // нет действий по текущей цене
+  return goNext()
 }

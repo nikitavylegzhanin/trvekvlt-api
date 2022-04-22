@@ -6,8 +6,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
 } from 'typeorm'
-import { Operation } from '@tinkoff/invest-openapi-js-sdk'
 
+import { Order } from '../api'
 import { Level } from './Level'
 
 export enum PositionStatus {
@@ -51,7 +51,7 @@ export class Position {
   openedByRules: PositionOpeningRule[]
 
   @Column('jsonb', { array: false, default: () => "'[]'" })
-  operations: Operation[]
+  orders: Order[]
 
   @Column('enum', {
     enum: PositionClosingRule,

@@ -1,10 +1,10 @@
 import { connect } from './db'
-import { initApp, subscribePrice } from './app'
+import { init, run } from './app'
 import { startServer, logUrl } from './server'
 
 connect()
-  .then(initApp)
-  .then(subscribePrice)
+  .then(init)
+  .then(run)
   .then(startServer)
   .then(logUrl)
   .catch(console.error)
