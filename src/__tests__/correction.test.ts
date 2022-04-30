@@ -4,6 +4,7 @@ import { addLevels } from '../store/levels'
 import { addTrend, selectLastTrend } from '../store/trends'
 import { TrendDirection, TrendType } from '../db/Trend'
 import { selectLastPosition } from '../store/positions'
+import { editConfig } from '../store/config'
 import { PositionClosingRule } from '../db/Position'
 import { runStartegy } from '../strategy'
 
@@ -19,8 +20,14 @@ describe('Correction', () => {
   }))
 
   store.dispatch(addLevels(levels))
+  store.dispatch(
+    editConfig({
+      startDate: new Date(2021, 11, 31, 10, 0, 0),
+      endDate: new Date(2021, 11, 31, 18, 40, 0),
+    })
+  )
 
-  it('меняет направление тренда при 2 SL подряд', () => {
+  it('меняет направление тренда при 2 SL подряд', async () => {
     // 1. Аптренд
     store.dispatch(
       addTrend({ direction: TrendDirection.UP, type: TrendType.MANUAL })
@@ -31,13 +38,13 @@ describe('Correction', () => {
     })
 
     // 2. Открываем позицию
-    runStartegy(1.9, 2, placeOrder)
+    await runStartegy(2, placeOrder)
     const lastPosition2 = selectLastPosition(store.getState())
     expect(lastPosition2.openLevelId).toBe(2)
     expect(lastPosition2.closedByRule).toBeUndefined()
 
     // 3. Закрываем по стопу
-    runStartegy(1.48, 1.49, placeOrder)
+    await runStartegy(1.49, placeOrder)
     const lastPosition3 = selectLastPosition(store.getState())
     expect(lastPosition3).toMatchObject<Partial<typeof lastPosition3>>({
       openLevelId: 2,
@@ -45,13 +52,13 @@ describe('Correction', () => {
     })
 
     // 4. Открываем еще одну
-    runStartegy(1.9, 2, placeOrder)
+    await runStartegy(2, placeOrder)
     const lastPosition4 = selectLastPosition(store.getState())
     expect(lastPosition4.openLevelId).toBe(2)
     expect(lastPosition4.closedByRule).toBeUndefined()
 
     // 5. Закрываем по стопу повторно
-    runStartegy(1.4, 1.5, placeOrder)
+    await runStartegy(1.5, placeOrder)
     const lastPosition5 = selectLastPosition(store.getState())
     expect(lastPosition5).toMatchObject<Partial<typeof lastPosition5>>({
       openLevelId: 2,

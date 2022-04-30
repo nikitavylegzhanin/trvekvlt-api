@@ -6,6 +6,8 @@ export type EditableConfigParams = Partial<{
   ticker: string
   figi: string
   isDisabled: boolean
+  startDate: Date
+  endDate: Date
 }>
 
 type Config = {
