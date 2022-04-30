@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
 } from 'typeorm'
 
 import { Position } from './Position'
+import { Bot } from './Bot'
 
 @Entity()
 export class Level {
@@ -28,4 +30,7 @@ export class Level {
 
   @OneToMany(() => Position, (position) => position.closedLevel)
   closedPositions?: Position[]
+
+  @ManyToOne(() => Bot, (bot) => bot.levels)
+  bot: Bot
 }

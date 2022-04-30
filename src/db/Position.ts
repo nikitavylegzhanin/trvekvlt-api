@@ -9,6 +9,7 @@ import {
 
 import { Order } from '../api'
 import { Level } from './Level'
+import { Bot } from './Bot'
 
 export enum PositionStatus {
   OPENING = 'OPENING',
@@ -74,4 +75,7 @@ export class Position {
 
   @ManyToOne(() => Level, (level) => level.closedPositions)
   closedLevel?: Level
+
+  @ManyToOne(() => Bot, (bot) => bot.positions)
+  bot: Bot
 }
