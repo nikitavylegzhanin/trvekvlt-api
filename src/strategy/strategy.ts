@@ -11,7 +11,7 @@ import { editConfig, selectConfig } from '../store/config'
 import { selectLastTrend } from '../store/trends'
 import { PositionClosingRule } from '../db/Position'
 import { openPosition, averagingPosition, closePosition } from './position'
-import { isTradingInterval, isTimeBreak } from './marketPhase'
+import { isTradingInterval } from './marketPhase'
 import {
   manageClosingRules,
   isTp,
@@ -23,7 +23,6 @@ import {
 } from './rules'
 import { addCorrectionTrend } from './trend'
 import {
-  getLastPrice,
   getPriceDistanceToPrevLevel,
   getPositionProfit,
   isLastPositionClosed,
@@ -43,22 +42,20 @@ import { Order } from '../api'
 type PlaceOrderByDirection = (direction: 1 | 2) => Promise<Order>
 
 export const runStartegy = async (
-  bid: number,
-  ask: number,
-  placeOrder: PlaceOrderByDirection,
-  goNext: VoidFunction
+  lastPrice: number,
+  placeOrder: PlaceOrderByDirection
 ) => {
   const state = store.getState()
   const config = selectConfig(state)
 
   // пропускаем торговлю если движок выключен
-  if (config.isDisabled) return goNext()
+  if (config.isDisabled) return
 
   const date = new Date()
   const lastPosition = selectLastPositionWithLevels(state)
-  const lastTrend = selectLastTrend(state) // TODO selectOrFail
+  const lastTrend = selectLastTrend(state)
 
-  if (!isTradingInterval(date)) {
+  if (!isTradingInterval(date, config.startDate, config.endDate)) {
     // закрываем позицию по окночании торговой фазы
     if (isLastPositionOpen(lastPosition?.status)) {
       const operation = getCloseOperation(lastTrend)
@@ -76,18 +73,14 @@ export const runStartegy = async (
     }
 
     // пропускаем торговлю вне торговой фазы
-    return goNext()
+    return
   }
-
-  // пропускаем торговлю во время клиринга
-  if (isTimeBreak(date)) return goNext()
 
   if (!lastTrend) {
     throw new Error('Last trend is undefined')
   }
 
   const levels = selectLevels(state)
-  const lastPrice = getLastPrice(ask, bid, lastTrend)
   const isShort = isDowntrend(lastTrend)
   const distance = getPriceDistanceToPrevLevel(
     levels,
@@ -137,7 +130,7 @@ export const runStartegy = async (
           openingRule
         )
 
-        return goNext()
+        return
       }
     }
   }
@@ -156,7 +149,7 @@ export const runStartegy = async (
         nextLevel.id
       )
 
-      return goNext()
+      return
     }
 
     if (isSlt50Percent(lastPosition.closingRules, distance)) {
@@ -167,7 +160,7 @@ export const runStartegy = async (
         lastPosition.openLevelId
       )
 
-      return goNext()
+      return
     }
 
     // slt 3ticks
@@ -186,7 +179,7 @@ export const runStartegy = async (
         lastPosition.openLevelId
       )
 
-      return goNext()
+      return
     }
 
     // sl
@@ -202,7 +195,7 @@ export const runStartegy = async (
       if (isCorrectionTrend(lastTrend)) {
         store.dispatch(editConfig({ isDisabled: true }))
 
-        return goNext()
+        return
       }
 
       // 2 стопа подряд → коррекция
@@ -216,5 +209,5 @@ export const runStartegy = async (
   }
 
   // нет действий по текущей цене
-  return goNext()
+  return
 }

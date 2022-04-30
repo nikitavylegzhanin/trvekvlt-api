@@ -24,6 +24,13 @@ describe('SL', () => {
     store.dispatch(initLevels(levels))
   })
 
+  store.dispatch(
+    editConfig({
+      startDate: new Date(2021, 11, 31, 10, 0, 0),
+      endDate: new Date(2021, 11, 31, 18, 40, 0),
+    })
+  )
+
   test('при достижении 50% до следующего уровня против тренда (лонг)', () => {
     //      Uptrend
     // 2 -╱╲-------------- | 1
@@ -35,14 +42,14 @@ describe('SL', () => {
     )
 
     // 1. Открываем позицию в лонг на уровне 2
-    runStartegy(1.9, 2, placeOrder)
+    runStartegy(2, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,
     })
 
     // 2. Цена падает на 50% до следующего уровня против тренда → SL
-    runStartegy(1.4, 1.5, placeOrder)
+    runStartegy(1.5, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 2,
@@ -61,14 +68,14 @@ describe('SL', () => {
     )
 
     // 1. Открываем позицию в шорт на уровне 2
-    runStartegy(2, 2.1, placeOrder)
+    runStartegy(2, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,
     })
 
     // 2. Цена поднимается на 50% до следующего уровня (3) против тренда → SL
-    runStartegy(2.5, 2.6, placeOrder)
+    runStartegy(2.5, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 2,
@@ -76,7 +83,7 @@ describe('SL', () => {
     })
   })
 
-  test('не открываем позиции после SL на коррекции', () => {
+  test('не открываем позиции после SL на коррекции', async () => {
     // 4 -╲---------- | Long
     //     ╲          | 1 SL
     // 3 ---╲-------- | Long
@@ -88,8 +95,8 @@ describe('SL', () => {
     )
 
     // 1. Long → SL
-    runStartegy(3.9, 4, placeOrder)
-    runStartegy(3.4, 3.5, placeOrder)
+    await runStartegy(4, placeOrder)
+    await runStartegy(3.5, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 4,
@@ -97,8 +104,8 @@ describe('SL', () => {
     })
 
     // 2. Long → SL → Correction
-    runStartegy(2.9, 3, placeOrder)
-    runStartegy(2.4, 2.5, placeOrder)
+    await runStartegy(3, placeOrder)
+    await runStartegy(2.5, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 3,
@@ -106,8 +113,8 @@ describe('SL', () => {
     })
 
     // 3. Short → SL
-    runStartegy(2, 2.1, placeOrder)
-    runStartegy(2.5, 2.6, placeOrder)
+    await runStartegy(2, placeOrder)
+    await runStartegy(2.5, placeOrder)
     const position3 = selectLastPosition(store.getState())
     expect(position3).toMatchObject<Partial<typeof position3>>({
       openLevelId: 2,
@@ -115,13 +122,13 @@ describe('SL', () => {
     })
 
     // 4. Do not open positions yet
-    runStartegy(2.9, 3, placeOrder) // 2SL reverses trend
+    await runStartegy(3, placeOrder) // 2SL reverses trend
     const position4 = selectLastPosition(store.getState())
     expect(position4.openLevelId).toBe(2)
     expect(position4.closedByRule).toBe(PositionClosingRule.SL)
   })
 
-  test('не открываем позиции после SL на коррекции (шорт)', () => {
+  test('не открываем позиции после SL на коррекции (шорт)', async () => {
     store.dispatch(editConfig({ isDisabled: false }))
     store.dispatch(
       initLevels(
@@ -137,8 +144,8 @@ describe('SL', () => {
     )
 
     // 1. Short → SL
-    runStartegy(21.52, 21.53, placeOrder)
-    runStartegy(21.62, 21.63, placeOrder)
+    await runStartegy(21.52, placeOrder)
+    await runStartegy(21.62, placeOrder)
     const position1 = selectLastPosition(store.getState())
     expect(position1).toMatchObject<Partial<typeof position1>>({
       openLevelId: 2,
@@ -146,8 +153,8 @@ describe('SL', () => {
     })
 
     // 2. Short → SL → Correction
-    runStartegy(21.7, 21.71, placeOrder)
-    runStartegy(21.91, 21.92, placeOrder)
+    await runStartegy(21.7, placeOrder)
+    await runStartegy(21.91, placeOrder)
     const position2 = selectLastPosition(store.getState())
     expect(position2).toMatchObject<Partial<typeof position2>>({
       openLevelId: 3,
@@ -161,8 +168,8 @@ describe('SL', () => {
     })
 
     // 3. Long → SL
-    runStartegy(22.09, 22.1, placeOrder)
-    runStartegy(21.89, 21.9, placeOrder)
+    await runStartegy(22.1, placeOrder)
+    await runStartegy(21.9, placeOrder)
     const position3 = selectLastPosition(store.getState())
     expect(position3).toMatchObject<Partial<typeof position3>>({
       openLevelId: 4,

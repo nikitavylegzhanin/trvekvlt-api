@@ -6,6 +6,7 @@ const api = new OpenAPIClient({
 
 type Instrument = {
   figi: string
+  exchange: string
 }
 
 type InstrumentType = 'future' | 'share'
@@ -18,7 +19,7 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
         if (error) return reject(error)
 
         return resolve(
-          res.instruments.find((future) => future.ticker === ticker)
+          res.instruments.find((instrument) => instrument.ticker === ticker)
         )
       }
     )
@@ -107,3 +108,48 @@ export const getOrderState = (accountId: string, orderId: string) =>
       })
     })
   )
+
+const parseDateToRequest = (date: Date) => ({
+  seconds: Math.floor(date.getTime() / 1000),
+  nanos: (date.getTime() % 1000) * 1e6,
+})
+
+type Timestamp = {
+  seconds: string
+  nanos: number
+}
+
+const parseDateToResponse = (timestamp?: Timestamp) =>
+  timestamp ? new Date(Number.parseInt(timestamp.seconds) * 1000) : null
+
+type TradingSchedule = {
+  isTradingDay: boolean
+  startDate: Date
+  endDate: Date
+  premarketStartDate: Date
+  premarketEndDate: Date
+}
+
+export const getTradingSchedule = (exchange: string, from: Date, to?: Date) =>
+  new Promise<TradingSchedule>((resolve, reject) => {
+    api.instruments.tradingSchedules(
+      {
+        exchange,
+        from: parseDateToRequest(from),
+        to: parseDateToRequest(to || from),
+      },
+      (error, res) => {
+        if (error) return reject(error)
+
+        const [day] = res.exchanges[0].days
+
+        return resolve({
+          isTradingDay: day.isTradingDay,
+          startDate: parseDateToResponse(day.startTime),
+          endDate: parseDateToResponse(day.endTime),
+          premarketStartDate: parseDateToResponse(day.premarketStartTime),
+          premarketEndDate: parseDateToResponse(day.premarketEndTime),
+        })
+      }
+    )
+  })
