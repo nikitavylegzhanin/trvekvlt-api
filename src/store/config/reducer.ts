@@ -16,7 +16,6 @@ type Config = {
 
 const initialState: Config = {
   isSandbox: process.env.IS_SANDBOX === 'true',
-  ticker: process.env.TICKER,
   isDisabled: false,
 }
 

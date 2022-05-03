@@ -5,14 +5,13 @@ import {
   getInstrument,
   getTradingSchedule,
   marketDataStream,
-  getSandboxAccountId,
   placeOrder,
 } from './api'
 import store from './store'
 import { initLevels, addLevels } from './store/levels'
 import { initTrends, selectLastTrend } from './store/trends'
 import { initPositions } from './store/positions'
-import { Level, Trend, Position } from './db'
+import { Bot, Level, Trend, Position } from './db'
 import { editConfig } from './store/config'
 import { getLastPrice } from './strategy/utils'
 import { runStartegy } from './strategy'
@@ -26,26 +25,49 @@ const getRelatedLevels = pipe(
   uniq
 )
 
-export const init = async ({ manager }: Connection) => {
-  // Init levels, trends, positions
-  const levels = await manager.find(Level)
-  store.dispatch(initLevels(levels.map(pick(['id', 'value']))))
-
-  const trends = await manager.find(Trend)
-  store.dispatch(initTrends(trends.map(pick(['id', 'direction', 'type']))))
-
-  const positions = await manager.find(Position, {
-    relations: ['openLevel', 'closedLevel'],
-    where: {
-      createdAt: Raw((alias) => `${alias} BETWEEN :from AND :to`, {
-        from: new Date(new Date().setHours(0, 0, 1, 0)),
-        to: new Date(new Date().setHours(23, 59, 59, 0)),
-      }),
-    },
+export const getBots = async ({ manager }: Connection) => {
+  const bots = await manager.find(Bot, {
+    relations: ['levels'],
   })
+
+  await Promise.all(
+    bots.map(async (bot) => {
+      // last trend
+      const lastTrend = await manager.findOneOrFail(Trend, {
+        where: {
+          bot,
+        },
+      })
+
+      bot.trends = [lastTrend]
+
+      // positions of the current trading day
+      const positions = await manager.find(Position, {
+        relations: ['openLevel', 'closedLevel'],
+        where: {
+          bot,
+          createdAt: Raw((alias) => `${alias} BETWEEN :from AND :to`, {
+            from: new Date(new Date().setHours(0, 0, 1, 0)),
+            to: new Date(new Date().setHours(23, 59, 59, 0)),
+          }),
+        },
+      })
+
+      bot.positions = positions
+
+      return bot
+    })
+  )
+
+  return bots
+}
+
+const initState = (bot: Bot) => {
+  store.dispatch(initLevels(bot.levels.map(pick(['id', 'value']))))
+  store.dispatch(initTrends(bot.trends.map(pick(['id', 'direction', 'type']))))
   store.dispatch(
     initPositions(
-      positions.map((position) => ({
+      bot.positions.map((position) => ({
         ...pick(
           ['id', 'closingRules', 'closedByRule', 'status', 'openedByRules'],
           position
@@ -57,12 +79,10 @@ export const init = async ({ manager }: Connection) => {
   )
 
   // Add related levels if not loaded
-  const relatedLevels = without(levels, getRelatedLevels(positions))
+  const relatedLevels = without(bot.levels, getRelatedLevels(bot.positions))
   if (relatedLevels.length) {
     store.dispatch(addLevels(relatedLevels.map(pick(['id', 'value']))))
   }
-
-  return
 }
 
 type Order = {
@@ -77,20 +97,20 @@ const parseOrder = (data: any): Order => ({
   quantity: Number.parseInt(data?.quantity),
 })
 
-export const run = async () => {
-  const { figi, exchange } = await getInstrument('SFM2', 'future')
+export const run = async (bot: Bot) => {
+  const { figi, exchange } = await getInstrument(bot.ticker, bot.instrumentType)
 
-  const accountId = await getSandboxAccountId()
   const schedule = await getTradingSchedule(exchange, new Date())
 
   if (!schedule.isTradingDay) {
     throw new Error('Is not a trading day')
   }
 
-  store.dispatch(editConfig({ ...schedule, figi }))
+  initState(bot)
+  store.dispatch(editConfig({ ...schedule, figi, ticker: bot.ticker }))
 
   const placeOrderByDirection = (direction: 1 | 2) =>
-    placeOrder(figi, 1, direction, accountId)
+    placeOrder(figi, 1, direction, bot.accountId)
 
   marketDataStream.on('error', console.error)
 

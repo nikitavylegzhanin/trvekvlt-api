@@ -1,10 +1,10 @@
 import { connect } from './db'
-import { init, run } from './app'
+import { getBots, run } from './app'
 import { startServer, logUrl } from './server'
 
 connect()
-  .then(init)
-  .then(run)
+  .then(getBots)
+  .then((bots) => Promise.all(bots.map(run)))
   .then(startServer)
   .then(logUrl)
   .catch(console.error)
