@@ -32,13 +32,14 @@ export const getBots = async ({ manager }: Connection) => {
     figi: '',
     startDate: null,
     endDate: null,
+    isShortEnable: false,
     positions: [],
     trends: [],
   }))
 
   await Promise.all(
     storedBots.map(async (bot) => {
-      const { figi, exchange } = await getInstrument(
+      const { figi, exchange, isShortEnable } = await getInstrument(
         bot.ticker,
         bot.instrumentType
       )
@@ -71,6 +72,7 @@ export const getBots = async ({ manager }: Connection) => {
       const relatedLevels = without(bot.levels, getRelatedLevels(positions))
 
       bot.figi = figi
+      bot.isShortEnable = isShortEnable
       bot.positions = positions
       bot.startDate = schedule.startDate
       bot.endDate = schedule.endDate

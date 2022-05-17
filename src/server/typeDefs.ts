@@ -90,6 +90,7 @@ const typeDefs = gql`
     name: String
     ticker: String
     figi: String
+    isShortEnable: Boolean
     startDate: Date
     endDate: Date
     status: BotStatus

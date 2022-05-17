@@ -35,7 +35,7 @@ export const getTestTrend = (
 
 export const getTestBot = (
   levelValues?: number[],
-  isUptrend?: boolean,
+  isDowntrend?: boolean,
   isCorrection?: boolean
 ): StoredBot => ({
   id: 0,
@@ -43,7 +43,7 @@ export const getTestBot = (
   startDate: new Date(2021, 11, 31, 10, 0, 0),
   endDate: new Date(2021, 11, 31, 18, 40, 0),
   levels: levelValues ? getTestLevels(levelValues) : [],
-  trends: [getTestTrend(isUptrend, isCorrection)],
+  trends: [getTestTrend(isDowntrend, isCorrection)],
   positions: [],
   createdAt: date,
   updatedAt: date,
@@ -52,4 +52,5 @@ export const getTestBot = (
   ticker: 'TEST',
   figi: 't3st',
   instrumentType: InstrumentType.SHARE,
+  isShortEnable: true,
 })

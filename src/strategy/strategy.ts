@@ -102,7 +102,11 @@ export const runStartegy = async (
   const isClosed = isLastPositionClosed(lastPosition)
   const isOpenPartially = isLastPositionOpenPartially(lastPosition)
 
-  if (nextLevel && or(isClosed, isOpenPartially)) {
+  if (
+    nextLevel &&
+    or(isClosed, isOpenPartially) &&
+    (!isShort || bot.isShortEnable)
+  ) {
     if (
       !isLevelDisabled(nextLevel) &&
       !isLastLevel(nextLevel.id, levels) &&

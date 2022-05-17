@@ -10,6 +10,7 @@ export type StoredBot = Bot & {
   figi: string
   startDate: Date
   endDate: Date
+  isShortEnable: boolean
 }
 
 const reducer = createReducer<StoredBot[]>([], (builder) =>
