@@ -3,9 +3,9 @@ import { path, identity } from 'ramda'
 
 import { Store } from '../store'
 
-const getState = path<Store['config']>(['config'])
+const getState = path<Store['bots']>(['bots'])
 
-export const selectConfig: Selector<Store, Store['config']> = createSelector(
+export const selectBots: Selector<Store, Store['bots']> = createSelector(
   identity,
   getState
 )

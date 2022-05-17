@@ -1,9 +1,15 @@
 import store from '../store'
-import { PositionWithLevels, StoredPosition } from '../store/positions'
-import { enableLevel, StoredLevel } from '../store/levels'
-import { PositionClosingRule, PositionOpeningRule } from '../db/Position'
+import { editData } from '../store/bots'
+import {
+  Bot,
+  Position,
+  PositionClosingRule,
+  PositionOpeningRule,
+  Level,
+  LevelStatus,
+} from '../db'
 import { updatePositionClosingRules } from './position'
-import { isLastPositionOpen } from './utils'
+import { isLastPositionOpen, isLevelDisabled } from './utils'
 
 enum Distance {
   GOOD = 0.7,
@@ -13,28 +19,58 @@ enum Distance {
 
 export const LEVEL_DISTANCE = 0.03
 
-const isAbleToCloseBySlt50 = (
-  closingRules: PositionWithLevels['closingRules']
-) => closingRules.includes(PositionClosingRule.SLT_50PERCENT)
+const isAbleToCloseBySlt50 = (closingRules: Position['closingRules']) =>
+  closingRules.includes(PositionClosingRule.SLT_50PERCENT)
 
 export const isAbleToCloseBySlt3Ticks = (
-  closingRules: PositionWithLevels['closingRules']
+  closingRules: Position['closingRules']
 ) => closingRules.includes(PositionClosingRule.SLT_3TICKS)
 
-export const manageClosingRules = (
+export const manageClosingRules = async (
+  botId: Bot['id'],
   distance: number,
-  lastPosition: PositionWithLevels
+  lastPosition: Position
 ) => {
   const closingRules = [...lastPosition.closingRules]
 
   if (distance >= Distance.NOT_BAD) {
     // от середины разблочим уровни (на которых открывали/закрывали позицию)
-    if (lastPosition.openLevel?.isDisabled) {
-      store.dispatch(enableLevel(lastPosition.openLevelId))
+    if (isLevelDisabled(lastPosition.openLevel)) {
+      store.dispatch(
+        editData({
+          botId,
+          level: {
+            id: lastPosition.openLevel.id,
+            status: LevelStatus.ACTIVE,
+          },
+          position: {
+            id: lastPosition.id,
+            openLevel: {
+              ...lastPosition.openLevel,
+              status: LevelStatus.ACTIVE,
+            },
+          },
+        })
+      )
     }
 
-    if (lastPosition.closedLevel?.isDisabled) {
-      store.dispatch(enableLevel(lastPosition.closedLevelId))
+    if (lastPosition.closedLevel && isLevelDisabled(lastPosition.closedLevel)) {
+      store.dispatch(
+        editData({
+          botId,
+          level: {
+            id: lastPosition.closedLevel.id,
+            status: LevelStatus.ACTIVE,
+          },
+          position: {
+            id: lastPosition.id,
+            closedLevel: {
+              ...lastPosition.closedLevel,
+              status: LevelStatus.ACTIVE,
+            },
+          },
+        })
+      )
     }
 
     if (
@@ -57,28 +93,25 @@ export const manageClosingRules = (
 
   // обновляем правила закрытия при изменении
   if (closingRules.length !== lastPosition.closingRules.length) {
-    updatePositionClosingRules(lastPosition, closingRules)
+    await updatePositionClosingRules(botId, lastPosition, closingRules)
   }
 }
 
-export const isTp = (
-  nextLevel?: StoredLevel,
-  lastPositionOpenLevel?: StoredLevel
-) =>
+export const isTp = (nextLevel?: Level, lastPositionOpenLevel?: Level) =>
   nextLevel &&
-  !nextLevel.isDisabled &&
+  !isLevelDisabled(nextLevel) &&
   nextLevel.id !== lastPositionOpenLevel?.id
 
 export const isSlt50Percent = (
-  positionClosingRules: StoredPosition['closingRules'],
+  positionClosingRules: Position['closingRules'],
   distance: number
 ) =>
   positionClosingRules.includes(PositionClosingRule.SLT_50PERCENT) &&
   distance <= Distance.NOT_BAD
 
 export const isSlt3Ticks = (
-  positionClosingRules: StoredPosition['closingRules'],
-  positionOpenLevel: StoredLevel,
+  positionClosingRules: Position['closingRules'],
+  positionOpenLevel: Level,
   lastPrice: number,
   isShort: boolean
 ) => {
@@ -91,7 +124,7 @@ export const isSlt3Ticks = (
 }
 
 export const isSl = (
-  positionClosingRules: StoredPosition['closingRules'],
+  positionClosingRules: Position['closingRules'],
   positionProfit: number,
   distance: number
 ) =>

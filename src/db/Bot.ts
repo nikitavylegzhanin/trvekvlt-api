@@ -11,9 +11,15 @@ import { Level } from './Level'
 import { Position } from './Position'
 import { Trend } from './Trend'
 
-enum InstrumentType {
+export enum InstrumentType {
   FUTURE = 'future',
   SHARE = 'share',
+}
+
+export enum BotStatus {
+  RUNNING = 'RUNNING',
+  DISABLED_DURING_SESSION = 'DISABLED_DURING_SESSION',
+  DISABLED = 'DISABLED',
 }
 
 @Entity()
@@ -32,6 +38,9 @@ export class Bot {
 
   @Column('enum', { enum: InstrumentType })
   instrumentType: InstrumentType
+
+  @Column('enum', { enum: BotStatus, default: BotStatus.RUNNING })
+  status: BotStatus
 
   @CreateDateColumn()
   createdAt: Date

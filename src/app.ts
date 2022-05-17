@@ -1,5 +1,5 @@
 import { Connection, Raw } from 'typeorm'
-import { pick, not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
+import { not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
 
 import {
   getInstrument,
@@ -8,12 +8,9 @@ import {
   placeOrder,
 } from './api'
 import store from './store'
-import { initLevels, addLevels } from './store/levels'
-import { initTrends, selectLastTrend } from './store/trends'
-import { initPositions } from './store/positions'
+import { StoredBot, initBots, selectBots } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
-import { editConfig } from './store/config'
-import { getLastPrice } from './strategy/utils'
+import { getBotById, getLastTrend, getLastPrice } from './strategy/utils'
 import { runStartegy } from './strategy'
 
 const getRelatedLevels = pipe(
@@ -30,16 +27,34 @@ export const getBots = async ({ manager }: Connection) => {
     relations: ['levels'],
   })
 
+  const storedBots: StoredBot[] = [...bots].map((bot) => ({
+    ...bot,
+    figi: '',
+    startDate: null,
+    endDate: null,
+    positions: [],
+    trends: [],
+  }))
+
   await Promise.all(
-    bots.map(async (bot) => {
+    storedBots.map(async (bot) => {
+      const { figi, exchange } = await getInstrument(
+        bot.ticker,
+        bot.instrumentType
+      )
+
+      const schedule = await getTradingSchedule(exchange, new Date())
+
+      if (!schedule.isTradingDay) {
+        throw new Error('Is not a trading day')
+      }
+
       // last trend
       const lastTrend = await manager.findOneOrFail(Trend, {
         where: {
           bot,
         },
       })
-
-      bot.trends = [lastTrend]
 
       // positions of the current trading day
       const positions = await manager.find(Position, {
@@ -53,36 +68,22 @@ export const getBots = async ({ manager }: Connection) => {
         },
       })
 
+      const relatedLevels = without(bot.levels, getRelatedLevels(positions))
+
+      bot.figi = figi
       bot.positions = positions
+      bot.startDate = schedule.startDate
+      bot.endDate = schedule.endDate
+      bot.trends = [lastTrend]
+      bot.levels = [...bot.levels, ...relatedLevels]
 
       return bot
     })
   )
 
-  return bots
-}
+  store.dispatch(initBots(storedBots))
 
-const initState = (bot: Bot) => {
-  store.dispatch(initLevels(bot.levels.map(pick(['id', 'value']))))
-  store.dispatch(initTrends(bot.trends.map(pick(['id', 'direction', 'type']))))
-  store.dispatch(
-    initPositions(
-      bot.positions.map((position) => ({
-        ...pick(
-          ['id', 'closingRules', 'closedByRule', 'status', 'openedByRules'],
-          position
-        ),
-        openLevelId: position.openLevel?.id,
-        closedLevelId: position.closedLevel?.id,
-      }))
-    )
-  )
-
-  // Add related levels if not loaded
-  const relatedLevels = without(bot.levels, getRelatedLevels(bot.positions))
-  if (relatedLevels.length) {
-    store.dispatch(addLevels(relatedLevels.map(pick(['id', 'value']))))
-  }
+  return storedBots
 }
 
 type Order = {
@@ -97,20 +98,9 @@ const parseOrder = (data: any): Order => ({
   quantity: Number.parseInt(data?.quantity),
 })
 
-export const run = async (bot: Bot) => {
-  const { figi, exchange } = await getInstrument(bot.ticker, bot.instrumentType)
-
-  const schedule = await getTradingSchedule(exchange, new Date())
-
-  if (!schedule.isTradingDay) {
-    throw new Error('Is not a trading day')
-  }
-
-  initState(bot)
-  store.dispatch(editConfig({ ...schedule, figi, ticker: bot.ticker }))
-
+export const run = async (bot: StoredBot) => {
   const placeOrderByDirection = (direction: 1 | 2) =>
-    placeOrder(figi, 1, direction, bot.accountId)
+    placeOrder(bot.figi, 1, direction, bot.accountId)
 
   marketDataStream.on('error', console.error)
 
@@ -131,10 +121,11 @@ export const run = async (bot: Bot) => {
         askPrice = lastAsk.price
         isTransaction = true
 
-        const lastTrend = selectLastTrend(store.getState())
+        const bots = selectBots(store.getState())
+        const lastTrend = getLastTrend(getBotById(bots, bot.id))
         const lastPrice = getLastPrice(askPrice, bidPrice, lastTrend)
 
-        await runStartegy(lastPrice, placeOrderByDirection)
+        await runStartegy(bot.id, lastPrice, placeOrderByDirection)
 
         return (isTransaction = false)
       }
@@ -143,7 +134,7 @@ export const run = async (bot: Bot) => {
 
   marketDataStream.write({
     subscribeOrderBookRequest: {
-      instruments: [{ figi, depth: 1 }],
+      instruments: [{ figi: bot.figi, depth: 1 }],
       subscriptionAction: 'SUBSCRIPTION_ACTION_SUBSCRIBE',
     },
   })

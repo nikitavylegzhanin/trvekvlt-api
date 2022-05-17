@@ -3,24 +3,41 @@ import { gql } from 'apollo-server'
 const typeDefs = gql`
   scalar Date
 
-  type StoredConfig {
-    ticker: String
-    figi: String
-    isDisabled: Boolean
-    isSandbox: Boolean
+  enum LevelStatus {
+    ACTIVE
+    DISABLED_DURING_SESSION
+    DISABLED
   }
 
-  type StoredLevel {
+  type Level {
     id: ID
     value: Float
-    # isDisabled: Boolean
+    status: LevelStatus
+    createdAt: Date
+    updatedAt: Date
   }
 
   enum PositionStatus {
     OPENING
-    OPEN
+    OPEN_PARTIAL
+    OPEN_FULL
     CLOSING
     CLOSED
+  }
+
+  enum PositionOpeningRule {
+    BEFORE_LEVEL_3TICKS
+    ON_LEVEL
+    AFTER_LEVEL_3TICKS
+  }
+
+  type Order {
+    date: Date
+    price: Float
+    currency: String
+    quantity: Int
+    direction: String
+    orderType: String
   }
 
   enum PositionClosingRule {
@@ -29,15 +46,18 @@ const typeDefs = gql`
     SLT_3TICKS
     SLT_50PERCENT
     MARKET_PHASE_END
+    TIME_BREAK
   }
 
-  type StoredPosition {
+  type Position {
     id: ID
     status: PositionStatus
+    openedByRules: [PositionOpeningRule]
+    orders: [Order]
     closingRules: [PositionClosingRule]
-    openLevelId: ID
     closedByRule: PositionClosingRule
-    closedLevelId: ID
+    createdAt: Date
+    updatedAt: Date
   }
 
   enum TrendDirection {
@@ -50,17 +70,38 @@ const typeDefs = gql`
     CORRECTION
   }
 
-  type StoredTrend {
+  type Trend {
     id: ID
     direction: TrendDirection
     type: TrendType
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  enum BotStatus {
+    RUNNING
+    DISABLED_DURING_SESSION
+    DISABLED
+  }
+
+  type StoredBot {
+    id: ID
+    accountId: String
+    name: String
+    ticker: String
+    figi: String
+    startDate: Date
+    endDate: Date
+    status: BotStatus
+    createdAt: Date
+    updatedAt: Date
+    levels: [Level]
+    positions: [Position]
+    trends: [Trend]
   }
 
   type State {
-    config: StoredConfig
-    levels: [StoredLevel]
-    positions: [StoredPosition]
-    trends: [StoredTrend]
+    bots: [StoredBot]
   }
 
   type Log {

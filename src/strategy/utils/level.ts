@@ -1,10 +1,9 @@
-import { StoredLevel } from '../../store/levels'
+import { compose, propEq, not } from 'ramda'
+
+import { Level, LevelStatus } from '../../db'
 import { LEVEL_DISTANCE } from '../rules'
 
-export const isLastLevel = (
-  levelId: StoredLevel['id'],
-  levels: StoredLevel[]
-) => {
+export const isLastLevel = (levelId: Level['id'], levels: Level[]) => {
   const sortedLevels = [...levels].sort((a, b) => a.value - b.value)
   const levelIndex = sortedLevels.findIndex(({ id }) => id === levelId)
 
@@ -16,8 +15,13 @@ export const isLastLevel = (
  * @param levels все возможные уровни
  * @param lastPrice текущая цена
  */
-export const getNextLevel = (levels: StoredLevel[], lastPrice: number) =>
+export const getNextLevel = (levels: Level[], lastPrice: number) =>
   levels.find(
     ({ value }) =>
       lastPrice >= value - LEVEL_DISTANCE && lastPrice <= value + LEVEL_DISTANCE
   )
+
+export const isLevelDisabled = compose(
+  not,
+  propEq('status', LevelStatus.ACTIVE)
+)

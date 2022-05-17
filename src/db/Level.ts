@@ -11,6 +11,12 @@ import {
 import { Position } from './Position'
 import { Bot } from './Bot'
 
+export enum LevelStatus {
+  ACTIVE = 'ACTIVE',
+  DISABLED_DURING_SESSION = 'DISABLED_DURING_SESSION',
+  DISABLED = 'DISABLED',
+}
+
 @Entity()
 export class Level {
   @PrimaryGeneratedColumn()
@@ -18,6 +24,9 @@ export class Level {
 
   @Column('real')
   value: number
+
+  @Column('enum', { enum: LevelStatus, default: LevelStatus.ACTIVE })
+  status: LevelStatus
 
   @CreateDateColumn()
   createdAt: Date

@@ -1,91 +1,71 @@
 jest.mock('telegraf')
 import store from '../store'
-import { addLevels, initLevels } from '../store/levels'
-import { selectLastPosition, initPositions } from '../store/positions'
-import { addTrend, selectLastTrend } from '../store/trends'
-import { editConfig } from '../store/config'
-import { TrendDirection, TrendType } from '../db/Trend'
-import { PositionOpeningRule, PositionStatus } from '../db/Position'
+import { initBots, editBot } from '../store/bots'
+import { getLastPosition, getLastTrend } from '../strategy/utils'
+import { TrendDirection, PositionStatus, PositionOpeningRule } from '../db'
 import { runStartegy } from '../strategy'
+import { getTestBot, getTestLevels, getTestTrend } from './utils'
 
 const placeOrder = jest.fn((data) => data)
+const testBot = getTestBot()
 
 describe('Открытие позиции в направлении тренда', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
 
   beforeEach(() => {
-    store.dispatch(initPositions([]))
+    store.dispatch(
+      editBot({
+        id: testBot.id,
+        positions: [],
+        levels: getTestLevels([1, 2, 3, 4, 5]),
+      })
+    )
   })
 
-  const bid = 2
-  const ask = 3
-  const levels = [1, bid, ask, 4, 5].map((value) => ({
-    value,
-    id: value,
-    isDisabled: false,
-  }))
+  store.dispatch(initBots([testBot]))
 
-  store.dispatch(addLevels(levels))
-  store.dispatch(
-    editConfig({
-      startDate: new Date(2021, 11, 31, 10, 0, 0),
-      endDate: new Date(2021, 11, 31, 18, 40, 0),
-    })
-  )
-
-  test('по bid price для аптренда', () => {
-    store.dispatch(
-      addTrend({ direction: TrendDirection.UP, type: TrendType.MANUAL })
-    )
+  test('по bid price для аптренда', async () => {
+    const trendA = getLastTrend(store.getState().bots[0])
+    expect(trendA.direction).toBe(TrendDirection.UP)
 
     // Изначально нет открытых позиций
-    const positionA = selectLastPosition(store.getState())
+    const positionA = getLastPosition(store.getState().bots[0])
     expect(positionA).toBeUndefined()
 
-    runStartegy(bid, placeOrder)
+    await runStartegy(testBot.id, 2, placeOrder)
 
-    const positionB = selectLastPosition(store.getState())
-    expect(positionB).toMatchObject<Partial<typeof positionB>>({
-      openLevelId: levels.find(({ value }) => value === bid).id,
-    })
+    const positionB = getLastPosition(store.getState().bots[0])
+    expect(positionB.openLevel.id).toBe(2)
   })
 
-  test('по ask price для даунтрейда', () => {
-    store.dispatch(
-      addTrend({ direction: TrendDirection.DOWN, type: TrendType.MANUAL })
-    )
+  test('по ask price для даунтрейда', async () => {
+    store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend(true)] }))
 
-    const positionA = selectLastPosition(store.getState())
+    const positionA = getLastPosition(store.getState().bots[0])
     expect(positionA).toBeUndefined()
 
-    runStartegy(ask, placeOrder)
+    await runStartegy(testBot.id, 3, placeOrder)
 
-    const positionB = selectLastPosition(store.getState())
-    expect(positionB).toMatchObject<Partial<typeof positionB>>({
-      openLevelId: levels.find(({ value }) => value === ask).id,
-    })
+    const positionB = getLastPosition(store.getState().bots[0])
+    expect(positionB.openLevel.id).toBe(3)
 
     // Только одна открытая заявка
-    runStartegy(bid, placeOrder)
-    const positionC = selectLastPosition(store.getState())
-    expect(positionC).toMatchObject<Partial<typeof positionC>>({
-      openLevelId: levels.find(({ value }) => value === ask).id,
-    })
+    await runStartegy(testBot.id, 3, placeOrder)
+    const { positions } = store.getState().bots[0]
+    expect(positions).toHaveLength(1)
   })
 
   test('не открывает крайние уровни', async () => {
-    store.dispatch(
-      addTrend({ direction: TrendDirection.UP, type: TrendType.MANUAL })
-    )
+    store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend()] }))
 
     // Верхний уровень
-    runStartegy(5, placeOrder)
-    const position1 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 5, placeOrder)
+    const position1 = getLastPosition(store.getState().bots[0])
     expect(position1).toBeUndefined()
 
     // Нижний уровень
-    runStartegy(1, placeOrder)
-    const position2 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 1, placeOrder)
+    const position2 = getLastPosition(store.getState().bots[0])
     expect(position2).toBeUndefined()
   })
 
@@ -96,40 +76,38 @@ describe('Открытие позиции в направлении тренда
     //      ⎽╱        1
     //     ╱
 
-    store.dispatch(initLevels(levels))
-
-    const trend = selectLastTrend(store.getState())
+    const trend = getLastTrend(store.getState().bots[0])
     expect(trend.direction).toBe(TrendDirection.UP)
 
     // 1. За 3 тика до уровня BEFORE_LEVEL_3TICKS
-    await runStartegy(1.97, placeOrder)
-    const lastPosition1 = selectLastPosition(store.getState())
-    expect(lastPosition1.openLevelId).toBe(2)
+    await runStartegy(testBot.id, 1.97, placeOrder)
+    const lastPosition1 = getLastPosition(store.getState().bots[0])
+    expect(lastPosition1.openLevel.id).toBe(2)
     expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
     expect(lastPosition1.openedByRules).toContainEqual(
       PositionOpeningRule['BEFORE_LEVEL_3TICKS']
     )
 
     // 2. На уровне
-    await runStartegy(2, placeOrder)
-    const lastPosition2 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 2, placeOrder)
+    const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
     expect(lastPosition2.openedByRules).toContain(
       PositionOpeningRule['ON_LEVEL']
     )
 
     // 3. Правило не дублируем
-    await runStartegy(2.02, placeOrder)
-    await runStartegy(2, placeOrder)
-    const lastPosition3 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 2.02, placeOrder)
+    await runStartegy(testBot.id, 2, placeOrder)
+    const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3.openedByRules).toEqual([
       PositionOpeningRule['BEFORE_LEVEL_3TICKS'],
       PositionOpeningRule['ON_LEVEL'],
     ])
 
     // 4. После 3 тиков от уровня - позиция полностью открыта
-    await runStartegy(2.03, placeOrder)
-    const lastPosition4 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 2.03, placeOrder)
+    const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.status).toBe(PositionStatus['OPEN_FULL'])
     expect(lastPosition4.openedByRules).toEqual([
       PositionOpeningRule['BEFORE_LEVEL_3TICKS'],
@@ -138,8 +116,8 @@ describe('Открытие позиции в направлении тренда
     ])
 
     // 5. Закроем позицию
-    await runStartegy(3, placeOrder)
-    const lastPosition5 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 3, placeOrder)
+    const lastPosition5 = getLastPosition(store.getState().bots[0])
     expect(lastPosition5.status).toBe(PositionStatus['CLOSED'])
   })
 
@@ -149,30 +127,28 @@ describe('Открытие позиции в направлении тренда
     //      ╲     3
     // 1: ---╲--- 4
 
-    store.dispatch(
-      addTrend({ direction: TrendDirection.DOWN, type: TrendType.MANUAL })
-    )
+    store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend(true)] }))
 
     // 1. За 3 тика до уровня BEFORE_LEVEL_3TICKS
-    await runStartegy(2.03, placeOrder)
-    const lastPosition1 = selectLastPosition(store.getState())
-    expect(lastPosition1.openLevelId).toBe(2)
+    await runStartegy(testBot.id, 2.03, placeOrder)
+    const lastPosition1 = getLastPosition(store.getState().bots[0])
+    expect(lastPosition1.openLevel.id).toBe(2)
     expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
     expect(lastPosition1.openedByRules).toContainEqual(
       PositionOpeningRule['BEFORE_LEVEL_3TICKS']
     )
 
     // 2. На уровне
-    await runStartegy(2, placeOrder)
-    const lastPosition2 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 2, placeOrder)
+    const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
     expect(lastPosition2.openedByRules).toContain(
       PositionOpeningRule['ON_LEVEL']
     )
 
     // 3. После 3 тиков от уровня - позиция полностью открыта
-    await runStartegy(1.97, placeOrder)
-    const lastPosition3 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 1.97, placeOrder)
+    const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3.status).toBe(PositionStatus['OPEN_FULL'])
     expect(lastPosition3.openedByRules).toEqual([
       PositionOpeningRule['BEFORE_LEVEL_3TICKS'],
@@ -181,8 +157,8 @@ describe('Открытие позиции в направлении тренда
     ])
 
     // 4. Закроем позицию
-    await runStartegy(1, placeOrder)
-    const lastPosition4 = selectLastPosition(store.getState())
+    await runStartegy(testBot.id, 1, placeOrder)
+    const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.status).toBe(PositionStatus['CLOSED'])
   })
 })
