@@ -1,5 +1,6 @@
 import { createConnection, getConnection } from 'typeorm'
 
+import { Bot } from './Bot'
 import { Level } from './Level'
 import { Trend } from './Trend'
 import { Position } from './Position'
@@ -11,7 +12,7 @@ export const connect = () =>
   createConnection({
     type: 'postgres',
     url,
-    entities: [Level, Trend, Position, Log],
+    entities: [Bot, Level, Trend, Position, Log],
     synchronize: true,
   })
 

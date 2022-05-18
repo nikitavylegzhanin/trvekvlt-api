@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
 } from 'typeorm'
+
+import { Bot } from './Bot'
 
 export enum TrendDirection {
   UP = 'UP',
@@ -32,4 +35,7 @@ export class Trend {
 
   @UpdateDateColumn()
   updatedAt: Date
+
+  @ManyToOne(() => Bot, (bot) => bot.trends)
+  bot: Bot
 }

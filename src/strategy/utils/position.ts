@@ -1,9 +1,10 @@
-import { pathEq, pipe, filter, propEq, findLast, T } from 'ramda'
+import { pathEq, pipe, filter, propEq, findLast, T, path } from 'ramda'
 
-import { PositionStatus, PositionOpeningRule } from '../../db/Position'
-import { StoredPosition } from '../../store/positions'
+import { Position, PositionStatus, PositionOpeningRule } from '../../db'
 
-export const isLastPositionClosed = (lastPosition?: StoredPosition) =>
+export const getLastPosition = pipe(path(['positions']), findLast<Position>(T))
+
+export const isLastPositionClosed = (lastPosition?: Position) =>
   !lastPosition || lastPosition.status === PositionStatus.CLOSED
 
 export const isLastPositionOpen = (positionStatus: PositionStatus) =>
@@ -16,12 +17,12 @@ export const isLastPositionOpenPartially = pathEq(
 )
 
 export const getLastClosedPosition = pipe(
-  filter<StoredPosition>(propEq('status', PositionStatus.CLOSED)),
-  findLast<StoredPosition>(T)
+  filter<Position>(propEq('status', PositionStatus.CLOSED)),
+  findLast<Position>(T)
 )
 
 export const getPositionNextStatus = (
-  openedByRules: StoredPosition['openedByRules']
+  openedByRules: Position['openedByRules']
 ) =>
   openedByRules.length >= Object.keys(PositionOpeningRule).length
     ? PositionStatus.OPEN_FULL
@@ -32,7 +33,7 @@ export const getPositionNextStatus = (
  */
 export const isOpeningRuleAvailable = (
   openingRule: PositionOpeningRule,
-  lastPosition?: StoredPosition
+  lastPosition?: Position
 ) => {
   if (!openingRule) return false
 

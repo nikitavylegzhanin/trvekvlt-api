@@ -1,15 +1,8 @@
 import { getConnection } from 'typeorm'
-import { pick } from 'ramda'
 
 import { Order } from '../api'
 import store from '../store'
-import {
-  StoredPosition,
-  addPosition,
-  updatePosition,
-  removePosition,
-} from '../store/positions'
-import { disableLevel, removeLevel, StoredLevel } from '../store/levels'
+import { StoredBot, addData, editData } from '../store/bots'
 import { getPositionNextStatus } from './utils'
 import {
   Level,
@@ -17,8 +10,10 @@ import {
   PositionStatus,
   PositionOpeningRule,
   PositionClosingRule,
+  LevelStatus,
   Log,
   LogType,
+  DEFAULT_CLOSING_RULES,
 } from '../db'
 import { sendMessage } from '../telegram'
 
@@ -27,34 +22,37 @@ import { sendMessage } from '../telegram'
  */
 export const openPosition = async (
   placeOrder: () => Promise<Order>,
-  openLevelId: StoredLevel['id'],
+  botId: StoredBot['id'],
+  openLevel: Level,
   openingRule: PositionOpeningRule
 ) => {
-  // добавляем позицию в стейт
-  store.dispatch(addPosition({ openLevelId }))
+  if (process.env.NODE_ENV === 'test') {
+    store.dispatch(
+      addData({
+        botId,
+        position: {
+          openLevel,
+          id: Math.floor(Math.random() * 666),
+          status: PositionStatus.OPEN_PARTIAL,
+          openedByRules: [openingRule],
+          orders: [],
+          closingRules: DEFAULT_CLOSING_RULES,
+          createdAt: new Date(),
+          updatedAt: null,
+          bot: null,
+        },
+      })
+    )
+
+    return
+  }
 
   try {
-    if (process.env.NODE_ENV === 'test') {
-      store.dispatch(
-        updatePosition({
-          positionId: 0,
-          data: {
-            id: Math.floor(Math.random() * 666),
-            status: PositionStatus.OPEN_PARTIAL,
-            openedByRules: [openingRule],
-          },
-        })
-      )
-
-      return
-    }
-
     // отправляем заявку
     const order = await placeOrder()
 
     // сохраняем в бд
     const { manager } = getConnection()
-    const openLevel = await manager.findOneOrFail(Level, openLevelId) // роняем при расхождении в уровнях
     const position = await manager.save(
       manager.create(Position, {
         openLevel,
@@ -64,21 +62,14 @@ export const openPosition = async (
       })
     )
 
-    // обновляем данные позиции
+    // добавляем в стейт
     store.dispatch(
-      updatePosition({
-        positionId: 0,
-        data: {
-          ...pick(['id', 'closingRules', 'closedByRule', 'status'], position),
-          openLevelId: position.openLevel.id,
-        },
+      addData({
+        botId,
+        position,
       })
     )
   } catch (error) {
-    // удаляем позицию и уровень
-    store.dispatch(removePosition(0))
-    store.dispatch(removeLevel(openLevelId))
-
     if (process.env.NODE_ENV !== 'test') {
       const type = LogType.ERROR
       const message = JSON.stringify(error)
@@ -101,22 +92,39 @@ export const openPosition = async (
  */
 export const averagingPosition = async (
   placeOrder: () => Promise<Order>,
-  storedPosition: StoredPosition,
+  botId: StoredBot['id'],
+  position: Position,
   openingRule: PositionOpeningRule
 ) => {
-  const openedByRules = [...storedPosition.openedByRules, openingRule]
+  const openedByRules = [...position.openedByRules, openingRule]
   const status = getPositionNextStatus(openedByRules)
 
   // блочим уровень, если позиция открыта полностью
   if (status === PositionStatus.OPEN_FULL) {
-    store.dispatch(disableLevel(storedPosition.openLevelId))
+    store.dispatch(
+      editData({
+        botId,
+        level: {
+          id: position.openLevel.id,
+          status: LevelStatus.DISABLED_DURING_SESSION,
+        },
+        position: {
+          id: position.id,
+          openLevel: {
+            ...position.openLevel,
+            status: LevelStatus.DISABLED_DURING_SESSION,
+          },
+        },
+      })
+    )
   }
 
   // обновляем позицию в стейте
   store.dispatch(
-    updatePosition({
-      positionId: storedPosition.id,
-      data: {
+    editData({
+      botId,
+      position: {
+        id: position.id,
         status,
         openedByRules,
       },
@@ -132,21 +140,18 @@ export const averagingPosition = async (
     const order = await placeOrder()
 
     // обновляем позицию в бд
-    const position = await manager.findOneOrFail(Position, storedPosition.id)
-    position.status = status
-    position.openedByRules = openedByRules
-    position.orders.push(order)
-
-    await manager.save(position)
+    await manager.save({
+      ...position,
+      status,
+      openedByRules,
+      orders: [...position.orders, order],
+    })
   } catch (error) {
-    // откратываем позицию в стейте
+    // откатываем позицию в стейте
     store.dispatch(
-      updatePosition({
-        positionId: storedPosition.id,
-        data: {
-          status: storedPosition.status,
-          openedByRules: storedPosition.openedByRules,
-        },
+      editData({
+        botId,
+        position,
       })
     )
 
@@ -166,28 +171,12 @@ export const averagingPosition = async (
 
 export const closePosition = async (
   placeOrder: () => Promise<Order>,
-  positionId: StoredPosition['id'],
-  closedByRule: StoredPosition['closedByRule'],
-  disableLevelId?: StoredLevel['id'],
-  closedLevelId?: StoredPosition['closedLevelId']
+  botId: StoredBot['id'],
+  position: Position,
+  closedByRule: Position['closedByRule'],
+  disableLevel?: Level,
+  closedLevel?: Level
 ) => {
-  // блочим уровень
-  if (disableLevelId) {
-    store.dispatch(disableLevel(disableLevelId))
-  }
-
-  // изменяем позицию в стейте
-  store.dispatch(
-    updatePosition({
-      positionId,
-      data: {
-        status: PositionStatus.CLOSING,
-        closedLevelId: closedLevelId,
-        closedByRule: closedByRule,
-      },
-    })
-  )
-
   if (process.env.NODE_ENV !== 'test') {
     const { manager } = getConnection()
 
@@ -196,18 +185,13 @@ export const closePosition = async (
       const order = await placeOrder()
 
       // обновляем позицию в бд
-      const position = await manager.findOneOrFail(Position, positionId)
-      position.status = PositionStatus.CLOSED
-      position.closedByRule = closedByRule
       position.orders.push(order)
-
-      if (closedLevelId) {
-        const closedLevel = await manager.findOneOrFail(Level, closedLevelId)
-
-        position.closedLevel = closedLevel
-      }
-
-      await manager.save(position)
+      await manager.save({
+        ...position,
+        status: PositionStatus.CLOSED,
+        closedByRule,
+        closedLevel,
+      })
     } catch (error) {
       const type = LogType.ERROR
       const message = JSON.stringify(error)
@@ -225,21 +209,41 @@ export const closePosition = async (
 
   // обновляем стейт
   store.dispatch(
-    updatePosition({
-      positionId,
-      data: { status: PositionStatus.CLOSED },
+    editData({
+      botId,
+      position: {
+        ...position,
+        status: PositionStatus.CLOSED,
+        closedByRule,
+        closedLevel: disableLevel
+          ? {
+              ...disableLevel,
+              status: LevelStatus.DISABLED_DURING_SESSION,
+            }
+          : closedLevel,
+      },
+      level: disableLevel
+        ? {
+            id: disableLevel.id,
+            status: LevelStatus.DISABLED_DURING_SESSION,
+          }
+        : undefined,
     })
   )
 }
 
 export const updatePositionClosingRules = async (
-  position: StoredPosition,
+  botId: StoredBot['id'],
+  position: Position,
   closingRules: PositionClosingRule[]
 ) => {
   store.dispatch(
-    updatePosition({
-      positionId: position.id,
-      data: { closingRules },
+    editData({
+      botId,
+      position: {
+        id: position.id,
+        closingRules,
+      },
     })
   )
 
@@ -250,11 +254,9 @@ export const updatePositionClosingRules = async (
     await manager.update(Position, position.id, { closingRules })
   } catch (error) {
     store.dispatch(
-      updatePosition({
-        positionId: position.id,
-        data: {
-          closingRules: position.closingRules,
-        },
+      editData({
+        botId,
+        position,
       })
     )
   }

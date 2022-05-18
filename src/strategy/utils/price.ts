@@ -1,23 +1,21 @@
-import { StoredTrend } from '../../store/trends'
-import { TrendDirection } from '../../db/Trend'
-import { StoredLevel } from '../../store/levels'
+import { Trend, TrendDirection, Level } from '../../db'
 
-export const getLastPrice = (ask: number, bid: number, trend: StoredTrend) =>
+export const getLastPrice = (ask: number, bid: number, trend: Trend) =>
   trend.direction === TrendDirection.UP ? bid : ask
 
 export const getPriceDistanceToPrevLevel = (
-  levels: StoredLevel[],
+  levels: Level[],
   lastPrice: number,
   isShort: boolean,
-  openLevel: StoredLevel,
-  closedLevel: StoredLevel
+  openLevel: Level,
+  closedLevel: Level
 ) => {
   const positionLevel = closedLevel || openLevel
   if (!positionLevel || lastPrice === positionLevel.value) return 0
 
   const sortedLevels = [...levels].sort((a, b) => b.value - a.value)
 
-  const closestLevel1 = sortedLevels.reduce((a: StoredLevel, b: StoredLevel) =>
+  const closestLevel1 = sortedLevels.reduce((a: Level, b: Level) =>
     isShort
       ? Math.abs(b.value - lastPrice) < Math.abs(a.value - lastPrice)
         ? b
@@ -58,8 +56,8 @@ export const getPriceDistanceToPrevLevel = (
 }
 
 export const getPositionProfit = (
-  positionOpenLevel: StoredLevel,
-  lastTrend: StoredTrend,
+  positionOpenLevel: Level,
+  lastTrend: Trend,
   lastPrice: number
 ) =>
   lastTrend.direction === TrendDirection.UP

@@ -1,5 +1,6 @@
 export * from './db'
 
+export * from './Bot'
 export * from './Level'
 export * from './Trend'
 export * from './Position'

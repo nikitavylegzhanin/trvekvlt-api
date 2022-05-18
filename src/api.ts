@@ -7,6 +7,7 @@ const api = new OpenAPIClient({
 type Instrument = {
   figi: string
   exchange: string
+  isShortEnable: boolean
 }
 
 type InstrumentType = 'future' | 'share'
@@ -18,9 +19,19 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
       (error, res) => {
         if (error) return reject(error)
 
-        return resolve(
-          res.instruments.find((instrument) => instrument.ticker === ticker)
+        const instrument = res.instruments.find(
+          (instrument) => instrument.ticker === ticker
         )
+
+        if (!instrument) return reject(new Error('Instrument not found'))
+        if (!instrument.apiTradeAvailableFlag)
+          return reject(new Error('Instrument is not available for trade'))
+
+        return resolve({
+          figi: instrument.figi,
+          exchange: instrument.exchange,
+          isShortEnable: instrument.shortEnabledFlag,
+        })
       }
     )
   )
