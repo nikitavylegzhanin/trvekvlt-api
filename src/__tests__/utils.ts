@@ -8,6 +8,7 @@ import {
   Trend,
 } from '../db'
 import { StoredBot } from '../store/bots'
+import { Order } from '../api'
 
 const date = new Date()
 
@@ -54,3 +55,19 @@ export const getTestBot = (
   instrumentType: InstrumentType.SHARE,
   isShortEnable: true,
 })
+
+export const getPlaceOrderFn = (price: number) =>
+  jest.fn(
+    (direction: 1 | 2, quantity = 1): Promise<Order> =>
+      new Promise((resolve) =>
+        resolve({
+          date,
+          price,
+          currency: 'USD',
+          quantity,
+          direction:
+            direction === 1 ? 'ORDER_DIRECTION_BUY' : 'ORDER_DIRECTION_SELL',
+          orderType: 'ORDER_TYPE_MARKET',
+        })
+      )
+  )

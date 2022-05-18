@@ -43,3 +43,6 @@ export const isOpeningRuleAvailable = (
 
   return true
 }
+
+export const getOpenPositionValue = (openPosition: Position) =>
+  openPosition.orders.reduce((value, order) => value + order.quantity, 0)

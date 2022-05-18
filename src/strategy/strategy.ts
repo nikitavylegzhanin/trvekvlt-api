@@ -34,12 +34,16 @@ import {
   getCloseOperation,
   isOpeningRuleAvailable,
   isDowntrend,
+  getOpenPositionValue,
 } from './utils'
 import { Order } from '../api'
 import { Bot } from '../db'
 import { disableBotTillTomorrow } from './bot'
 
-type PlaceOrderByDirection = (direction: 1 | 2) => Promise<Order>
+type PlaceOrderByDirection = (
+  direction: 1 | 2,
+  quantity?: number
+) => Promise<Order>
 
 export const runStartegy = async (
   botId: Bot['id'],
@@ -63,7 +67,7 @@ export const runStartegy = async (
       const operation = getCloseOperation(lastTrend)
 
       await closePosition(
-        () => placeOrder(operation),
+        () => placeOrder(operation, getOpenPositionValue(lastPosition)),
         bot.id,
         lastPosition,
         PositionClosingRule.MARKET_PHASE_END
@@ -147,7 +151,8 @@ export const runStartegy = async (
   // закрываем открытую позицию по tp, slt, sl
   if (isLastPositionOpen(lastPosition?.status)) {
     const operation = getCloseOperation(lastTrend)
-    const placeOrderFn = () => placeOrder(operation)
+    const placeOrderFn = () =>
+      placeOrder(operation, getOpenPositionValue(lastPosition))
 
     if (isTp(nextLevel, lastPosition.openLevel)) {
       await closePosition(
