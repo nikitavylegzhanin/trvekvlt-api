@@ -26,30 +26,30 @@ export const openPosition = async (
   openLevel: Level,
   openingRule: PositionOpeningRule
 ) => {
-  if (process.env.NODE_ENV === 'test') {
-    store.dispatch(
-      addData({
-        botId,
-        position: {
-          openLevel,
-          id: Math.floor(Math.random() * 666),
-          status: PositionStatus.OPEN_PARTIAL,
-          openedByRules: [openingRule],
-          orders: [],
-          closingRules: DEFAULT_CLOSING_RULES,
-          createdAt: new Date(),
-          updatedAt: null,
-          bot: null,
-        },
-      })
-    )
-
-    return
-  }
-
   try {
     // отправляем заявку
     const order = await placeOrder()
+
+    if (process.env.NODE_ENV === 'test') {
+      store.dispatch(
+        addData({
+          botId,
+          position: {
+            openLevel,
+            id: Math.floor(Math.random() * 666),
+            status: PositionStatus.OPEN_PARTIAL,
+            openedByRules: [openingRule],
+            orders: [order],
+            closingRules: DEFAULT_CLOSING_RULES,
+            createdAt: new Date(),
+            updatedAt: null,
+            bot: null,
+          },
+        })
+      )
+
+      return
+    }
 
     // сохраняем в бд
     const { manager } = getConnection()
@@ -119,25 +119,26 @@ export const averagingPosition = async (
     )
   }
 
-  // обновляем позицию в стейте
-  store.dispatch(
-    editData({
-      botId,
-      position: {
-        id: position.id,
-        status,
-        openedByRules,
-      },
-    })
-  )
-
-  if (process.env.NODE_ENV === 'test') return
-
-  const { manager } = getConnection()
-
   try {
     // отправляем заявку
     const order = await placeOrder()
+
+    // обновляем позицию в стейте
+    store.dispatch(
+      editData({
+        botId,
+        position: {
+          id: position.id,
+          status,
+          openedByRules,
+          orders: [...position.orders, order],
+        },
+      })
+    )
+
+    if (process.env.NODE_ENV === 'test') return
+
+    const { manager } = getConnection()
 
     // обновляем позицию в бд
     await manager.save({
@@ -160,6 +161,8 @@ export const averagingPosition = async (
 
     sendMessage(type, message)
 
+    const { manager } = getConnection()
+
     manager.save(
       manager.create(Log, {
         type,
@@ -177,59 +180,62 @@ export const closePosition = async (
   disableLevel?: Level,
   closedLevel?: Level
 ) => {
-  if (process.env.NODE_ENV !== 'test') {
-    const { manager } = getConnection()
+  try {
+    // отправляем заявку
+    const order = await placeOrder()
 
-    try {
-      // отправляем заявку
-      const order = await placeOrder()
-
-      // обновляем позицию в бд
-      position.orders.push(order)
-      await manager.save({
-        ...position,
-        status: PositionStatus.CLOSED,
-        closedByRule,
-        closedLevel,
-      })
-    } catch (error) {
-      const type = LogType.ERROR
-      const message = JSON.stringify(error)
-
-      sendMessage(type, message)
-
-      manager.save(
-        manager.create(Log, {
-          type,
-          message,
-        })
-      )
-    }
-  }
-
-  // обновляем стейт
-  store.dispatch(
-    editData({
-      botId,
-      position: {
-        ...position,
-        status: PositionStatus.CLOSED,
-        closedByRule,
-        closedLevel: disableLevel
+    // обновляем стейт
+    store.dispatch(
+      editData({
+        botId,
+        position: {
+          ...position,
+          orders: [...position.orders, order],
+          status: PositionStatus.CLOSED,
+          closedByRule,
+          closedLevel: disableLevel
+            ? {
+                ...disableLevel,
+                status: LevelStatus.DISABLED_DURING_SESSION,
+              }
+            : closedLevel,
+        },
+        level: disableLevel
           ? {
-              ...disableLevel,
+              id: disableLevel.id,
               status: LevelStatus.DISABLED_DURING_SESSION,
             }
-          : closedLevel,
-      },
-      level: disableLevel
-        ? {
-            id: disableLevel.id,
-            status: LevelStatus.DISABLED_DURING_SESSION,
-          }
-        : undefined,
+          : undefined,
+      })
+    )
+
+    if (process.env.NODE_ENV === 'test') return
+
+    // обновляем позицию в бд
+    const { manager } = getConnection()
+
+    await manager.save({
+      ...position,
+      orders: [...position.orders, order],
+      status: PositionStatus.CLOSED,
+      closedByRule,
+      closedLevel,
     })
-  )
+  } catch (error) {
+    const type = LogType.ERROR
+    const message = JSON.stringify(error)
+
+    sendMessage(type, message)
+
+    const { manager } = getConnection()
+
+    manager.save(
+      manager.create(Log, {
+        type,
+        message,
+      })
+    )
+  }
 }
 
 export const updatePositionClosingRules = async (

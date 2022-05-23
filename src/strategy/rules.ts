@@ -111,7 +111,7 @@ export const isSlt50Percent = (
 
 export const isSlt3Ticks = (
   positionClosingRules: Position['closingRules'],
-  positionOpenLevel: Level,
+  positionAvgPrice: number,
   lastPrice: number,
   isShort: boolean
 ) => {
@@ -119,8 +119,8 @@ export const isSlt3Ticks = (
     return false
 
   return isShort
-    ? lastPrice >= positionOpenLevel.value - 0.03
-    : Math.abs(positionOpenLevel.value - lastPrice) <= 0.03
+    ? lastPrice >= positionAvgPrice - 0.03
+    : Math.abs(positionAvgPrice - lastPrice) <= 0.03
 }
 
 export const isSl = (

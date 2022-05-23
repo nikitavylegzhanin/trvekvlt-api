@@ -3,9 +3,8 @@ import store from '../store'
 import { initBots, editBot } from '../store/bots'
 import { getLastPosition } from '../strategy/utils'
 import { runStartegy } from '../strategy'
-import { getTestBot, getTestLevels } from './utils'
+import { getTestBot, getTestLevels, mockPrice } from './utils'
 
-const placeOrder = jest.fn((data) => data)
 const testBot = getTestBot()
 
 describe('Date intervals', () => {
@@ -28,13 +27,13 @@ describe('Date intervals', () => {
   test('обрабатывает торговую логику только в интервале рыночной фазы', async () => {
     // 1. Пре-опен → не работает
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 10, 29).getTime())
-    await runStartegy(testBot.id, 2, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1).toBeUndefined()
 
     // 2. Основная сессия c 10:30:01 до 18:09:59 UTC+3 → работает
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 10, 31).getTime())
-    await runStartegy(testBot.id, 2, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition2.openLevel.id).toBe(2)
 
@@ -43,7 +42,7 @@ describe('Date intervals', () => {
 
     // 3. Пост-маркет → не работает
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18, 41).getTime())
-    await runStartegy(testBot.id, 2, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3).toBeUndefined()
   })
@@ -51,21 +50,21 @@ describe('Date intervals', () => {
   // test('пропускаем торговую логику во время клиринга (13:55-14:05)', () => {
   //   // 1. Открываем позицию до клиринга
   //   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 13).getTime())
-  //   runStartegy(1.99, 2, placeOrder)
+  //   runStartegy(1.99, 2))
   //   const lastPosition1 = getLastPosition(store.getState().bots[0])
   //   expect(lastPosition1.openLevelId).toBe(2)
   //   expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
   //
   //   // 2. Во время клиринга не торгуем
   //   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 13, 55).getTime())
-  //   runStartegy(2.99, 3, placeOrder)
+  //   runStartegy(2.99, 3))
   //   const lastPosition2 = getLastPosition(store.getState().bots[0])
   //   expect(lastPosition2.openLevelId).toBe(2)
   //   expect(lastPosition2.status).toBe(PositionStatus.OPEN_PARTIAL)
   //
   //   // 3. После клиринга закрываем
   //   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 14, 6).getTime())
-  //   runStartegy(2.99, 3, placeOrder)
+  //   runStartegy(2.99, 3))
   //   const lastPosition3 = getLastPosition(store.getState().bots[0])
   //   expect(lastPosition3.openLevelId).toBe(2)
   //   expect(lastPosition3.status).toBe(PositionStatus.CLOSED)
@@ -75,7 +74,7 @@ describe('Date intervals', () => {
   test('закрывает позицию и обнуляет историю по окончании рыночной фазы', async () => {
     // 1. Открываем позицию
     jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 16, 50).getTime())
-    await runStartegy(testBot.id, 2, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.openLevel.id).toBe(2)
     const { positions: positions1 } = store.getState().bots[0]
@@ -85,7 +84,7 @@ describe('Date intervals', () => {
     jest
       .useFakeTimers()
       .setSystemTime(new Date(2021, 11, 31, 18, 40, 1).getTime())
-    await runStartegy(testBot.id, 2, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2))
     const { positions: positions2 } = store.getState().bots[0]
     expect(positions2).toHaveLength(0)
   })

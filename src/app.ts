@@ -101,8 +101,8 @@ const parseOrder = (data: any): Order => ({
 })
 
 export const run = async (bot: StoredBot) => {
-  const placeOrderByDirection = (direction: 1 | 2) =>
-    placeOrder(bot.figi, 1, direction, bot.accountId)
+  const placeOrderByDirection = (direction: 1 | 2, quantity = 1) =>
+    placeOrder(bot.figi, quantity, direction, bot.accountId)
 
   marketDataStream.on('error', console.error)
 

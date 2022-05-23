@@ -4,9 +4,8 @@ import { initBots, editBot } from '../store/bots'
 import { getLastPosition, getLastTrend } from '../strategy/utils'
 import { TrendDirection, TrendType, PositionClosingRule } from '../db'
 import { runStartegy } from '../strategy'
-import { getTestBot, getTestTrend } from './utils'
+import { getTestBot, getTestTrend, mockPrice } from './utils'
 
-const placeOrder = jest.fn((data) => data)
 const testBot = getTestBot([1, 2, 3, 4, 5], true)
 
 describe('Short enable flag', () => {
@@ -20,7 +19,7 @@ describe('Short enable flag', () => {
     expect(store.getState().bots[0].isShortEnable).toBeFalsy()
 
     // 1. пропускает торговлю в шорт при даунтренде
-    await runStartegy(testBot.id, 4, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(4))
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1).toBeUndefined()
 
@@ -30,19 +29,19 @@ describe('Short enable flag', () => {
     expect(trend2.direction).toBe(TrendDirection.UP)
     expect(store.getState().bots[0].isShortEnable).toBeFalsy()
 
-    await runStartegy(testBot.id, 4, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(4))
     const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition2.openLevel.id).toBe(4)
 
-    await runStartegy(testBot.id, 3.49, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(3.49))
     const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3.closedByRule).toBe(PositionClosingRule.SL)
 
-    await runStartegy(testBot.id, 3, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(3))
     const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.openLevel.id).toBe(3)
 
-    await runStartegy(testBot.id, 2.49, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2.49))
     const lastPosition5 = getLastPosition(store.getState().bots[0])
     expect(lastPosition5.closedByRule).toBe(PositionClosingRule.SL)
 
@@ -51,7 +50,7 @@ describe('Short enable flag', () => {
     expect(trend3.type).toBe(TrendType.CORRECTION)
 
     // 3. пропускает шорт на коррекции
-    await runStartegy(testBot.id, 2, placeOrder)
+    await runStartegy(testBot.id, ...mockPrice(2))
     const { positions } = store.getState().bots[0]
     expect(positions).toHaveLength(2)
   })

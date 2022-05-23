@@ -1,4 +1,5 @@
 import { Trend, TrendDirection, Level } from '../../db'
+import { isLevelAroundPrice } from './level'
 
 export const getLastPrice = (ask: number, bid: number, trend: Trend) =>
   trend.direction === TrendDirection.UP ? bid : ask
@@ -7,11 +8,36 @@ export const getPriceDistanceToPrevLevel = (
   levels: Level[],
   lastPrice: number,
   isShort: boolean,
-  openLevel: Level,
-  closedLevel: Level
+  openLevel?: Level,
+  openPositionAvgPrice?: number,
+  closedLevel?: Level
 ) => {
+  if (openLevel && openPositionAvgPrice && !closedLevel) {
+    if (isLevelAroundPrice(lastPrice, openLevel.value)) return 0
+
+    const closestLevel = [...levels]
+      .sort((a, b) => b.value - a.value)
+      .filter((level) => level.id !== openLevel.id)
+      .reduce((a: Level, b: Level) =>
+        isShort
+          ? Math.abs(b.value - lastPrice) < Math.abs(a.value - lastPrice)
+            ? b
+            : a
+          : Math.abs(b.value - lastPrice) <= Math.abs(a.value - lastPrice)
+          ? b
+          : a
+      )
+
+    const distanceToLevel = Math.abs(closestLevel.value - openPositionAvgPrice)
+    const distanceToPrice = Math.abs(lastPrice - openPositionAvgPrice)
+    const distance = distanceToPrice / distanceToLevel
+
+    return distance
+  }
+
   const positionLevel = closedLevel || openLevel
-  if (!positionLevel || lastPrice === positionLevel.value) return 0
+  if (!positionLevel || isLevelAroundPrice(lastPrice, positionLevel.value))
+    return 0
 
   const sortedLevels = [...levels].sort((a, b) => b.value - a.value)
 

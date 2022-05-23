@@ -34,12 +34,17 @@ import {
   getCloseOperation,
   isOpeningRuleAvailable,
   isDowntrend,
+  getPositionValue,
+  getPositionAvgPrice,
 } from './utils'
 import { Order } from '../api'
 import { Bot } from '../db'
 import { disableBotTillTomorrow } from './bot'
 
-type PlaceOrderByDirection = (direction: 1 | 2) => Promise<Order>
+type PlaceOrderByDirection = (
+  direction: 1 | 2,
+  quantity?: number
+) => Promise<Order>
 
 export const runStartegy = async (
   botId: Bot['id'],
@@ -63,7 +68,7 @@ export const runStartegy = async (
       const operation = getCloseOperation(lastTrend)
 
       await closePosition(
-        () => placeOrder(operation),
+        () => placeOrder(operation, getPositionValue(lastPosition)),
         bot.id,
         lastPosition,
         PositionClosingRule.MARKET_PHASE_END
@@ -85,11 +90,15 @@ export const runStartegy = async (
 
   const { levels } = bot
   const isShort = isDowntrend(lastTrend)
+  const positionAvgPrice = lastPosition
+    ? getPositionAvgPrice(lastPosition)
+    : undefined
   const distance = getPriceDistanceToPrevLevel(
     levels,
     lastPrice,
     isShort,
     lastPosition?.openLevel,
+    positionAvgPrice,
     lastPosition?.closedLevel
   )
 
@@ -147,7 +156,8 @@ export const runStartegy = async (
   // закрываем открытую позицию по tp, slt, sl
   if (isLastPositionOpen(lastPosition?.status)) {
     const operation = getCloseOperation(lastTrend)
-    const placeOrderFn = () => placeOrder(operation)
+    const placeOrderFn = () =>
+      placeOrder(operation, getPositionValue(lastPosition))
 
     if (isTp(nextLevel, lastPosition.openLevel)) {
       await closePosition(
@@ -178,7 +188,7 @@ export const runStartegy = async (
     if (
       isSlt3Ticks(
         lastPosition.closingRules,
-        lastPosition.openLevel,
+        positionAvgPrice,
         lastPrice,
         isShort
       )
@@ -200,6 +210,7 @@ export const runStartegy = async (
       lastTrend,
       lastPrice
     )
+
     if (isSl(lastPosition.closingRules, positionProfit, distance)) {
       await closePosition(
         placeOrderFn,
