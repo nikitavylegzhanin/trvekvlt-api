@@ -34,7 +34,8 @@ import {
   getCloseOperation,
   isOpeningRuleAvailable,
   isDowntrend,
-  getOpenPositionValue,
+  getPositionValue,
+  getPositionAvgPrice,
 } from './utils'
 import { Order } from '../api'
 import { Bot } from '../db'
@@ -67,7 +68,7 @@ export const runStartegy = async (
       const operation = getCloseOperation(lastTrend)
 
       await closePosition(
-        () => placeOrder(operation, getOpenPositionValue(lastPosition)),
+        () => placeOrder(operation, getPositionValue(lastPosition)),
         bot.id,
         lastPosition,
         PositionClosingRule.MARKET_PHASE_END
@@ -89,11 +90,15 @@ export const runStartegy = async (
 
   const { levels } = bot
   const isShort = isDowntrend(lastTrend)
+  const positionAvgPrice = lastPosition
+    ? getPositionAvgPrice(lastPosition)
+    : undefined
   const distance = getPriceDistanceToPrevLevel(
     levels,
     lastPrice,
     isShort,
     lastPosition?.openLevel,
+    positionAvgPrice,
     lastPosition?.closedLevel
   )
 
@@ -152,7 +157,7 @@ export const runStartegy = async (
   if (isLastPositionOpen(lastPosition?.status)) {
     const operation = getCloseOperation(lastTrend)
     const placeOrderFn = () =>
-      placeOrder(operation, getOpenPositionValue(lastPosition))
+      placeOrder(operation, getPositionValue(lastPosition))
 
     if (isTp(nextLevel, lastPosition.openLevel)) {
       await closePosition(
@@ -183,7 +188,7 @@ export const runStartegy = async (
     if (
       isSlt3Ticks(
         lastPosition.closingRules,
-        lastPosition.openLevel,
+        positionAvgPrice,
         lastPrice,
         isShort
       )
@@ -205,6 +210,7 @@ export const runStartegy = async (
       lastTrend,
       lastPrice
     )
+
     if (isSl(lastPosition.closingRules, positionProfit, distance)) {
       await closePosition(
         placeOrderFn,

@@ -44,5 +44,17 @@ export const isOpeningRuleAvailable = (
   return true
 }
 
-export const getOpenPositionValue = (openPosition: Position) =>
-  openPosition.orders.reduce((value, order) => value + order.quantity, 0)
+/**
+ * Объем позиции (количество бумаг)
+ */
+export const getPositionValue = (position: Position) =>
+  position.orders.reduce((value, order) => value + order.quantity, 0)
+
+/**
+ * Средняя цена позиции
+ */
+export const getPositionAvgPrice = (position: Position) => {
+  const sum = position.orders.reduce((sum, order) => sum + order.price, 0)
+
+  return sum / position.orders.length
+}

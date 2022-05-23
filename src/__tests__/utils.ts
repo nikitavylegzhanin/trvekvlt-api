@@ -56,10 +56,13 @@ export const getTestBot = (
   isShortEnable: true,
 })
 
-export const getPlaceOrderFn = (price: number) =>
+export const mockPrice = (
+  price: number
+): [number, (direction: 1 | 2, quantity: number) => Promise<Order>] => [
+  price,
   jest.fn(
-    (direction: 1 | 2, quantity = 1): Promise<Order> =>
-      new Promise((resolve) =>
+    (direction: 1 | 2, quantity = 1) =>
+      new Promise<Order>((resolve) =>
         resolve({
           date,
           price,
@@ -70,4 +73,5 @@ export const getPlaceOrderFn = (price: number) =>
           orderType: 'ORDER_TYPE_MARKET',
         })
       )
-  )
+  ),
+]
