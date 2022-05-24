@@ -1,123 +1,49 @@
 import { Scenes, session, Telegraf } from 'telegraf'
 
-import store from '../store'
-import { TrendDirection } from '../db/Trend'
-// import { addLevelScene, removeLevelScene } from './scenes'
-import addTrendAction from './addTrendAction'
+import {
+  listBotsAction,
+  selectBotsAction,
+  listBotLevelsAction,
+  addLevelScene,
+  addLevelAction,
+  removeLevelScene,
+  removeLevelAction,
+  addTrendAction,
+  toggleStatusAction,
+} from './actions'
 
 const bot = new Telegraf<Scenes.WizardContext>(process.env.TELEGRAM_TOKEN)
 
 bot.use(session())
-
 const stage = new Scenes.Stage<Scenes.WizardContext>([
-  // addLevelScene,
-  // removeLevelScene,
+  addLevelScene,
+  removeLevelScene,
 ])
 bot.use(stage.middleware())
 
 enum Command {
-  START = 'start',
-  STOP = 'stop',
-  LEVEL = 'level',
-  TREND = 'trend',
+  BOTS = 'bots',
 }
 
-enum Action {
-  LEVEL_LIST = 'LEVEL_LIST',
-  LEVEL_ADD = 'LEVEL_ADD',
-  LEVEL_REMOVE = 'LEVEL_REMOVE',
-  TREND_ADD_UP = 'TREND_UP',
-  TREND_ADD_DOWN = 'TREND_DOWN',
+export enum Action {
+  SELECT_BOT = 'SELECT_BOT',
+  BOT_LEVELS_LIST = 'BOT_LEVELS_LIST',
+  BOT_LEVELS_ADD = 'BOT_LEVELS_ADD',
+  BOT_LEVELS_REMOVE = 'BOT_LEVELS_REMOVE',
+  BOT_TRENDS_ADD = 'BOT_TRENDS_ADD',
+  BOT_TOGGLE_STATUS = 'BOT_TOGGLE_STATUS',
 }
 
-// // Strategy
-// bot.command(Command.START, (ctx) => {
-//   store.dispatch(editConfig({ isDisabled: false }))
-//
-//   return ctx.reply('Strategy started')
-// })
-//
-// bot.command(Command.STOP, (ctx) => {
-//   store.dispatch(editConfig({ isDisabled: true }))
-//
-//   return ctx.reply('Strategy stopped')
-// })
-//
-// // Trend
-// bot.command(Command.TREND, (ctx) => {
-//   const lastTrend = selectLastTrend(store.getState())
-//   const isUptrend = lastTrend?.direction === TrendDirection.UP
-//
-//   return ctx.reply(`The current trend: ${JSON.stringify(lastTrend)}`, {
-//     reply_markup: {
-//       inline_keyboard: [
-//         [
-//           {
-//             text: `Change to ${isUptrend ? 'downtrend' : 'uptrend'}`,
-//             callback_data: isUptrend
-//               ? Action.TREND_ADD_DOWN
-//               : Action.TREND_ADD_UP,
-//           },
-//         ],
-//       ],
-//     },
-//   })
-// })
-//
-// bot.action(Action.TREND_ADD_UP, async (ctx) => {
-//   try {
-//     await addTrendAction(TrendDirection.UP)
-//
-//     return ctx.reply('The current trend is up')
-//   } catch (error) {
-//     await ctx.reply(error.message)
-//     return ctx.scene.leave()
-//   }
-// })
-//
-// bot.action(Action.TREND_ADD_DOWN, async (ctx) => {
-//   try {
-//     await addTrendAction(TrendDirection.DOWN)
-//
-//     return ctx.reply('The current trend is down')
-//   } catch (error) {
-//     await ctx.reply(error.message)
-//     return ctx.scene.leave()
-//   }
-// })
-//
-// // Level
-// bot.command(Command.LEVEL, (ctx) => {
-//   return ctx.reply('What to do with levels?', {
-//     reply_markup: {
-//       inline_keyboard: [
-//         [
-//           { text: 'List', callback_data: Action.LEVEL_LIST },
-//           { text: 'Add', callback_data: Action.LEVEL_ADD },
-//           { text: 'Remove', callback_data: Action.LEVEL_REMOVE },
-//         ],
-//       ],
-//     },
-//   })
-// })
-//
-// bot.action(Action.LEVEL_LIST, (ctx) => {
-//   const state = store.getState()
-//   const levels = selectLevels(state)
-//
-//   const text = `<pre>${levels
-//     .map((level) => level.value)
-//     .sort((a, b) => b - a)
-//     .join(' ')}</pre>`
-//
-//   return ctx.reply(text, { parse_mode: 'HTML' })
-// })
-//
-// bot.action(Action.LEVEL_ADD, (ctx) => ctx.scene.enter(addLevelScene.id))
-//
-// bot.action(Action.LEVEL_REMOVE, (ctx) => ctx.scene.enter(removeLevelScene.id))
-//
-// bot.launch()
+bot.command(Command.BOTS, listBotsAction)
+
+bot.action(new RegExp(Action.SELECT_BOT), selectBotsAction)
+bot.action(new RegExp(Action.BOT_LEVELS_LIST), listBotLevelsAction)
+bot.action(new RegExp(Action.BOT_LEVELS_ADD), addLevelAction)
+bot.action(new RegExp(Action.BOT_LEVELS_REMOVE), removeLevelAction)
+bot.action(new RegExp(Action.BOT_TRENDS_ADD), addTrendAction)
+bot.action(new RegExp(Action.BOT_TOGGLE_STATUS), toggleStatusAction)
+
+bot.launch()
 
 // Notifications
 type Type = 'ERROR' | 'STATE'
