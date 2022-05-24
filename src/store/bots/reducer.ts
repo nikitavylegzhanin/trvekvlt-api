@@ -66,11 +66,18 @@ const reducer = createReducer<StoredBot[]>([], (builder) =>
         bot.id === action.payload.botId
           ? {
               ...bot,
-              ...payloadDataKeys.map((key: 'level' | 'position' | 'trend') => ({
-                [`${key}s`]: bot[`${key}s`].filter(
-                  (value: botDataValue) => value.id !== action.payload[key].id
-                ),
-              })),
+              ...payloadDataKeys
+                .map((key: 'level' | 'position' | 'trend') =>
+                  action.payload[key]
+                    ? {
+                        [`${key}s`]: bot[`${key}s`].filter(
+                          (value: botDataValue) =>
+                            value.id !== action.payload[key].id
+                        ),
+                      }
+                    : undefined
+                )
+                .reduce((obj, item) => ({ ...obj, ...item }), {}),
             }
           : bot
       )
