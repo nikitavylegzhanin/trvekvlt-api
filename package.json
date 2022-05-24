@@ -40,5 +40,21 @@
     "testMatch": [
       "**/?(*.)+(spec|test).[jt]s?(x)"
     ]
+  },
+  "renovate": {
+    "extends": [
+      "config:base"
+    ],
+    "packageRules": [
+      {
+        "matchUpdateTypes": [
+          "minor",
+          "patch",
+          "pin",
+          "digest"
+        ],
+        "automerge": true
+      }
+    ]
   }
 }
