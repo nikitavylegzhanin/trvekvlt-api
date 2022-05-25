@@ -59,6 +59,7 @@ export const openPosition = async (
         status: PositionStatus.OPEN_PARTIAL,
         openedByRules: [openingRule],
         orders: [order],
+        bot: { id: botId },
       })
     )
 
@@ -141,8 +142,7 @@ export const averagingPosition = async (
     const { manager } = getConnection()
 
     // обновляем позицию в бд
-    await manager.save({
-      ...position,
+    await manager.update(Position, position.id, {
       status,
       openedByRules,
       orders: [...position.orders, order],
@@ -214,8 +214,7 @@ export const closePosition = async (
     // обновляем позицию в бд
     const { manager } = getConnection()
 
-    await manager.save({
-      ...position,
+    await manager.update(Position, position.id, {
       orders: [...position.orders, order],
       status: PositionStatus.CLOSED,
       closedByRule,
