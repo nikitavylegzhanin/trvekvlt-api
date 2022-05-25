@@ -35,13 +35,7 @@ const getValidationErrors = (value: number, levels: Level[]) => {
   return errors
 }
 
-interface SessionData extends Scenes.WizardSessionData {
-  message: string
-}
-
-export const addLevelScene = new Scenes.WizardScene<
-  Scenes.WizardContext<SessionData>
->(
+export const addLevelScene = new Scenes.WizardScene<Scenes.WizardContext>(
   'addLevelScene',
   async (ctx) => {
     await ctx.reply('Enter a value for the new level')
@@ -49,7 +43,7 @@ export const addLevelScene = new Scenes.WizardScene<
     return ctx.wizard.next()
   },
   async (ctx) => {
-    if ('text' in ctx.message) {
+    if (ctx.message && 'text' in ctx.message) {
       const botId = getBotId(ctx.scene.state)
 
       if (botId) {

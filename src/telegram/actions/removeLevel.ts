@@ -6,13 +6,7 @@ import store from '../../store'
 import { removeData } from '../../store/bots'
 import { Level } from '../../db'
 
-interface SessionData extends Scenes.WizardSessionData {
-  message: string
-}
-
-export const removeLevelScene = new Scenes.WizardScene<
-  Scenes.WizardContext<SessionData>
->(
+export const removeLevelScene = new Scenes.WizardScene<Scenes.WizardContext>(
   'removeLevelScene',
   async (ctx) => {
     await ctx.reply('Enter the level value you want to remove')
@@ -20,7 +14,7 @@ export const removeLevelScene = new Scenes.WizardScene<
     return ctx.wizard.next()
   },
   async (ctx) => {
-    if ('text' in ctx.message) {
+    if (ctx.message && 'text' in ctx.message) {
       const botId = getBotId(ctx.scene.state)
 
       if (botId) {
