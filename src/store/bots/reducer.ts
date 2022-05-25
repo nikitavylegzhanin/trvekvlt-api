@@ -70,9 +70,9 @@ const reducer = createReducer<StoredBot[]>([], (builder) =>
                 .map((key: 'level' | 'position' | 'trend') =>
                   action.payload[key]
                     ? {
+                        // @ts-ignore
                         [`${key}s`]: bot[`${key}s`].filter(
-                          (value: botDataValue) =>
-                            value.id !== action.payload[key].id
+                          (value: any) => value.id !== action.payload[key].id
                         ),
                       }
                     : undefined
