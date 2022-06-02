@@ -16,7 +16,7 @@
     "typeorm": "^0.2.45"
   },
   "devDependencies": {
-    "@types/jest": "27.5.1",
+    "@types/jest": "27.5.2",
     "@types/node": "16.11.36",
     "@types/ramda": "0.28.13",
     "dotenv": "16.0.1",
