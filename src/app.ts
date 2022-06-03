@@ -1,6 +1,7 @@
-import { Connection, Raw } from 'typeorm'
+import { Raw } from 'typeorm'
 import { not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
 
+import db from './db'
 import {
   getInstrument,
   getTradingSchedule,
@@ -22,8 +23,8 @@ const getRelatedLevels = pipe(
   uniq
 )
 
-export const getBots = async ({ manager }: Connection) => {
-  const bots = await manager.find(Bot, {
+export const getBots = async () => {
+  const bots = await db.manager.find(Bot, {
     relations: ['levels'],
   })
 
@@ -51,17 +52,19 @@ export const getBots = async ({ manager }: Connection) => {
       }
 
       // last trend
-      const lastTrend = await manager.findOneOrFail(Trend, {
+      const lastTrend = await db.manager.findOneOrFail(Trend, {
         where: {
-          bot,
+          bot: {
+            id: bot.id,
+          },
         },
       })
 
       // positions of the current trading day
-      const positions = await manager.find(Position, {
+      const positions = await db.manager.find(Position, {
         relations: ['openLevel', 'closedLevel'],
         where: {
-          bot,
+          bot: { id: bot.id },
           createdAt: Raw((alias) => `${alias} BETWEEN :from AND :to`, {
             from: new Date(new Date().setHours(0, 0, 1, 0)),
             to: new Date(new Date().setHours(23, 59, 59, 0)),

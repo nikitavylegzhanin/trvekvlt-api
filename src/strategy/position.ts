@@ -1,10 +1,8 @@
-import { getConnection } from 'typeorm'
-
 import { Order } from '../api'
 import store from '../store'
 import { StoredBot, addData, editData } from '../store/bots'
 import { getPositionNextStatus } from './utils'
-import {
+import db, {
   Level,
   Position,
   PositionStatus,
@@ -52,7 +50,7 @@ export const openPosition = async (
     }
 
     // сохраняем в бд
-    const { manager } = getConnection()
+    const { manager } = db
     const position = await manager.save(
       manager.create(Position, {
         openLevel,
@@ -77,7 +75,7 @@ export const openPosition = async (
 
       sendMessage(type, message)
 
-      const { manager } = getConnection()
+      const { manager } = db
       manager.save(
         manager.create(Log, {
           type,
@@ -139,7 +137,7 @@ export const averagingPosition = async (
 
     if (process.env.NODE_ENV === 'test') return
 
-    const { manager } = getConnection()
+    const { manager } = db
 
     // обновляем позицию в бд
     await manager.update(Position, position.id, {
@@ -161,7 +159,7 @@ export const averagingPosition = async (
 
     sendMessage(type, message)
 
-    const { manager } = getConnection()
+    const { manager } = db
 
     manager.save(
       manager.create(Log, {
@@ -212,7 +210,7 @@ export const closePosition = async (
     if (process.env.NODE_ENV === 'test') return
 
     // обновляем позицию в бд
-    const { manager } = getConnection()
+    const { manager } = db
 
     await manager.update(Position, position.id, {
       orders: [...position.orders, order],
@@ -226,7 +224,7 @@ export const closePosition = async (
 
     sendMessage(type, message)
 
-    const { manager } = getConnection()
+    const { manager } = db
 
     manager.save(
       manager.create(Log, {
@@ -255,7 +253,7 @@ export const updatePositionClosingRules = async (
   if (process.env.NODE_ENV === 'test') return
 
   try {
-    const { manager } = getConnection()
+    const { manager } = db
     await manager.update(Position, position.id, { closingRules })
   } catch (error) {
     store.dispatch(

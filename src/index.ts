@@ -1,8 +1,8 @@
-import { connect } from './db'
+import db from './db'
 import { getBots, run } from './app'
 import { startServer, logUrl } from './server'
 
-connect()
+db.initialize()
   .then(getBots)
   .then((bots) => Promise.all(bots.map(run)))
   .then(startServer)
