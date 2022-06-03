@@ -1,4 +1,4 @@
-import { createConnection, getConnection } from 'typeorm'
+import { DataSource } from 'typeorm'
 
 import { Bot } from './Bot'
 import { Level } from './Level'
@@ -6,14 +6,14 @@ import { Trend } from './Trend'
 import { Position } from './Position'
 import { Log } from './Log'
 
-const url = `postgres://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@bot-dev.postgres.database.azure.com/postgres?sslmode=require`
+const db = new DataSource({
+  type: 'postgres',
+  host: process.env.HOST,
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: 'postgres',
+  entities: [Bot, Level, Trend, Position, Log],
+  synchronize: true,
+})
 
-export const connect = () =>
-  createConnection({
-    type: 'postgres',
-    url,
-    entities: [Bot, Level, Trend, Position, Log],
-    synchronize: true,
-  })
-
-export const close = () => getConnection().close()
+export default db
