@@ -111,9 +111,12 @@ const typeDefs = gql`
     createdAt: Date
   }
 
+  type StoredBot
+
   type Query {
     state: State
     log: [Log]
+    bots: [StoredBot]
   }
 `
 
