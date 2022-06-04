@@ -47,10 +47,6 @@ export const getBots = async () => {
 
       const schedule = await getTradingSchedule(exchange, new Date())
 
-      if (!schedule.isTradingDay) {
-        throw new Error('Is not a trading day')
-      }
-
       // last trend
       const lastTrend = await db.manager.findOneOrFail(Trend, {
         where: {
