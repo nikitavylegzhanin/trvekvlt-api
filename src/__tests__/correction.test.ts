@@ -4,7 +4,7 @@ import { initBots } from '../store/bots'
 import { getLastPosition, getLastTrend } from '../strategy/utils'
 import { runStartegy } from '../strategy'
 import { TrendDirection, TrendType } from '../db/Trend'
-import { PositionClosingRule } from '../db/Position'
+import { OrderRule, PositionStatus } from '../db'
 import { getTestBot, mockPrice } from './utils'
 
 const testBot = getTestBot([0.5, 1, 2, 3])
@@ -23,25 +23,26 @@ describe('Correction', () => {
     await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition2.openLevel.id).toBe(3)
-    expect(lastPosition2.closedByRule).toBeUndefined()
+    expect(lastPosition2.status).toBe(PositionStatus.OPEN_PARTIAL)
 
     // 3. Закрываем по стопу
     await runStartegy(testBot.id, ...mockPrice(1.49))
     const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3.openLevel.id).toBe(3)
-    expect(lastPosition3.closedByRule).toBe(PositionClosingRule.SL)
+    expect(lastPosition3.status).toBe(PositionStatus.CLOSED)
+    expect(lastPosition3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 4. Открываем еще одну
     await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.openLevel.id).toBe(3)
-    expect(lastPosition4.closedByRule).toBeUndefined()
+    expect(lastPosition4.status).toBe(PositionStatus.OPEN_PARTIAL)
 
     // 5. Закрываем по стопу повторно
     await runStartegy(testBot.id, ...mockPrice(1.5))
     const lastPosition5 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition5.openLevel.id).toBe(3)
-    expect(lastPosition5.closedByRule).toBe(PositionClosingRule.SL)
+    expect(lastPosition5.status).toBe(PositionStatus.CLOSED)
+    expect(lastPosition5.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 6. Тренд изменен на обратный по коррекции
     const lastTrend6 = getLastTrend(store.getState().bots[0])

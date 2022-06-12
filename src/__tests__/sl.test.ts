@@ -5,8 +5,8 @@ import { getLastPosition, getLastTrend } from '../strategy/utils'
 import {
   TrendDirection,
   TrendType,
-  PositionOpeningRule,
-  PositionClosingRule,
+  PositionStatus,
+  OrderRule,
   BotStatus,
 } from '../db'
 import { runStartegy } from '../strategy'
@@ -41,10 +41,10 @@ describe('SL', () => {
     await runStartegy(testBot.id, ...mockPrice(2))
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(3)
-    expect(position1.openedByRules).toEqual(
+    expect(position1.availableRules).not.toEqual(
       expect.arrayContaining([
-        PositionOpeningRule.ON_LEVEL,
-        PositionOpeningRule.AFTER_LEVEL_3TICKS,
+        OrderRule.OPEN_ON_LEVEL,
+        OrderRule.OPEN_AFTER_LEVEL_3TICKS,
       ])
     )
 
@@ -52,7 +52,8 @@ describe('SL', () => {
     await runStartegy(testBot.id, ...mockPrice(1.506))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(3)
-    expect(position2.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position2.status).toBe(PositionStatus.CLOSED)
+    expect(position2.orders[2].rule).toBe(OrderRule.CLOSE_BY_SL)
   })
 
   test('при достижении 50% до следующего уровня против тренда (шорт)', async () => {
@@ -73,7 +74,8 @@ describe('SL', () => {
     await runStartegy(testBot.id, ...mockPrice(2.495))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(3)
-    expect(position2.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position2.status).toBe(PositionStatus.CLOSED)
+    expect(position2.orders[2].rule).toBe(OrderRule.CLOSE_BY_SL)
   })
 
   test('не открываем позиции после SL на коррекции', async () => {
@@ -90,27 +92,30 @@ describe('SL', () => {
     await runStartegy(testBot.id, ...mockPrice(3.5))
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(5)
-    expect(position1.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position1.status).toBe(PositionStatus.CLOSED)
+    expect(position1.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 2. Long → SL → Correction
     await runStartegy(testBot.id, ...mockPrice(3))
     await runStartegy(testBot.id, ...mockPrice(2.5))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(4)
-    expect(position2.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position2.status).toBe(PositionStatus.CLOSED)
+    expect(position2.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 3. Short → SL
     await runStartegy(testBot.id, ...mockPrice(2))
     await runStartegy(testBot.id, ...mockPrice(2.5))
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(3)
-    expect(position3.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position3.status).toBe(PositionStatus.CLOSED)
+    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 4. Do not open positions yet
     await runStartegy(testBot.id, ...mockPrice(3)) // 2SL reverses trend
     const position4 = getLastPosition(store.getState().bots[0])
-    expect(position4.openLevel.id).toBe(3)
-    expect(position4.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position4.id).toBe(position3.id)
+    expect(position4.status).toBe(PositionStatus.CLOSED)
   })
 
   test('не открываем позиции после SL на коррекции (шорт)', async () => {
@@ -127,14 +132,16 @@ describe('SL', () => {
     await runStartegy(testBot.id, ...mockPrice(21.62))
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
-    expect(position1.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position1.status).toBe(PositionStatus.CLOSED)
+    expect(position1.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 2. Short → SL → Correction
     await runStartegy(testBot.id, ...mockPrice(21.7))
     await runStartegy(testBot.id, ...mockPrice(21.91))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(3)
-    expect(position2.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position2.status).toBe(PositionStatus.CLOSED)
+    expect(position2.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     const lastTrend1 = getLastTrend(store.getState().bots[0])
     expect(lastTrend1).toMatchObject<Partial<typeof lastTrend1>>({
@@ -147,7 +154,8 @@ describe('SL', () => {
     await runStartegy(testBot.id, ...mockPrice(21.9))
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(4)
-    expect(position3.closedByRule).toBe(PositionClosingRule.SL)
+    expect(position3.status).toBe(PositionStatus.CLOSED)
+    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 4. Strategy is disabled
     expect(store.getState().bots[0].status).toBe(

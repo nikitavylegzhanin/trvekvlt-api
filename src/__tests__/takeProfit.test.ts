@@ -2,12 +2,7 @@ jest.mock('telegraf')
 import store from '../store'
 import { initBots, editBot } from '../store/bots'
 import { getLastPosition } from '../strategy/utils'
-import {
-  PositionClosingRule,
-  PositionStatus,
-  PositionOpeningRule,
-  LevelStatus,
-} from '../db'
+import { OrderRule, PositionStatus, LevelStatus } from '../db'
 import { runStartegy } from '../strategy'
 import { getTestBot, getTestLevels, getTestTrend, mockPrice } from './utils'
 
@@ -49,7 +44,8 @@ describe('Take profit', () => {
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(2)
     expect(position3.closedLevel.id).toBe(3)
-    expect(position3.closedByRule).toBe(PositionClosingRule.TP)
+    expect(position3.status).toBe(PositionStatus.CLOSED)
+    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_TP)
 
     // 4. Цена держится на закрытом уровне → закрытый уровень выключен
     await runStartegy(testBot.id, ...mockPrice(3.01))
@@ -86,27 +82,29 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(2.03))
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
-    expect(position1.closingRules).toEqual(
+    expect(position1.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
+        OrderRule.OPEN_ON_LEVEL,
+        OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
       ])
     )
-    expect(position1.openedByRules).toEqual(
-      expect.arrayContaining([PositionOpeningRule.AFTER_LEVEL_3TICKS])
+    expect(position1.availableRules).not.toEqual(
+      expect.arrayContaining([OrderRule.OPEN_AFTER_LEVEL_3TICKS])
     )
 
     // 2. Цена поднимается на 50% от средней цены позии до следующего уровня → позиция доступна для закрытия в 0
     await runStartegy(testBot.id, ...mockPrice(2.515))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(2)
-    expect(position2.closingRules).toEqual(
+    expect(position2.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
-        PositionClosingRule.SLT_3TICKS,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
+        OrderRule.CLOSE_BY_SLT_3TICKS,
       ])
     )
 
@@ -114,13 +112,14 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(2.059))
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(2)
-    expect(position3.closedByRule).toBe(PositionClosingRule.SLT_3TICKS)
+    expect(position3.status).toBe(PositionStatus.CLOSED)
+    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
 
     // 4. Закрытая позиция по стопу не открывается второй раз
     await runStartegy(testBot.id, ...mockPrice(2))
     const position4 = getLastPosition(store.getState().bots[0])
     expect(position4.openLevel.id).toBe(2)
-    expect(position4.closedByRule).toBe(PositionClosingRule.SLT_3TICKS)
+    expect(position4.id).toBe(position3.id)
   })
 
   test('при отскоке от 70% до середины', async () => {
@@ -142,11 +141,11 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(23.21))
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
-    expect(position1.closingRules).toEqual(
+    expect(position1.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
       ])
     )
 
@@ -154,13 +153,13 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(23.42))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(2)
-    expect(position2.closingRules).toEqual(
+    expect(position2.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
-        PositionClosingRule.SLT_3TICKS,
-        PositionClosingRule.SLT_50PERCENT,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
+        OrderRule.CLOSE_BY_SLT_3TICKS,
+        OrderRule.CLOSE_BY_SLT_50PERCENT,
       ])
     )
 
@@ -168,7 +167,8 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(23.36))
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(2)
-    expect(position3.closedByRule).toBe(PositionClosingRule.SLT_50PERCENT)
+    expect(position3.status).toBe(PositionStatus.CLOSED)
+    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_50PERCENT)
 
     const closedLevel3 = store
       .getState()
@@ -197,11 +197,11 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(2))
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
-    expect(position1.closingRules).toEqual(
+    expect(position1.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
       ])
     )
 
@@ -209,38 +209,39 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(2.4))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(2)
-    expect(position2.closingRules).toEqual(
+    expect(position2.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
       ])
     )
 
     // 3. Цена падает на уровень открытия → позиция остается открытой
     await runStartegy(testBot.id, ...mockPrice(2))
     const position3 = getLastPosition(store.getState().bots[0])
-    expect(position3.openLevel.id).toBe(2)
-    expect(position3.closedByRule).toBeUndefined()
+    expect(position3.id).toBe(position2.id)
+    expect(position3.status).toBe(PositionStatus.OPEN_PARTIAL)
 
     // 4. Цена поднимается на 50% от уровня открытия → добавляем правило закрытия по SLT_3TICKS
     await runStartegy(testBot.id, ...mockPrice(2.5))
     const position4 = getLastPosition(store.getState().bots[0])
     expect(position4.openLevel.id).toBe(2)
-    expect(position4.closingRules).toEqual(
+    expect(position4.availableRules).toEqual(
       expect.arrayContaining([
-        PositionClosingRule.SL,
-        PositionClosingRule.TP,
-        PositionClosingRule.MARKET_PHASE_END,
-        PositionClosingRule.SLT_3TICKS,
+        OrderRule.CLOSE_BY_SL,
+        OrderRule.CLOSE_BY_TP,
+        OrderRule.CLOSE_BY_MARKET_PHASE_END,
+        OrderRule.CLOSE_BY_SLT_3TICKS,
       ])
     )
 
     // 5. Цена падает на уровень открытия → закрываем по SLT_3TICKS
     await runStartegy(testBot.id, ...mockPrice(2))
     const position5 = getLastPosition(store.getState().bots[0])
-    expect(position5.openLevel.id).toBe(2)
-    expect(position5.closedByRule).toBe(PositionClosingRule.SLT_3TICKS)
+    expect(position5.id).toBe(position4.id)
+    expect(position5.status).toBe(PositionStatus.CLOSED)
+    expect(position5.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
   })
 
   test('при даунтренде', async () => {
@@ -268,31 +269,33 @@ describe('Take profit', () => {
 
     // 2. SLT_50PERCENT при отскоке от 70% до следующего уровня
     await runStartegy(testBot.id, ...mockPrice(23.64))
-    expect(getLastPosition(store.getState().bots[0]).closingRules).toContain(
-      PositionClosingRule.SLT_50PERCENT
+    expect(getLastPosition(store.getState().bots[0]).availableRules).toContain(
+      OrderRule.CLOSE_BY_SLT_50PERCENT
     )
 
     await runStartegy(testBot.id, ...mockPrice(23.74))
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.status).toBe(PositionStatus.CLOSED)
-    expect(position2.closedByRule).toBe(PositionClosingRule.SLT_50PERCENT)
+    expect(position2.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_50PERCENT)
 
     // 3. Открывем позицию 23.51
     await runStartegy(testBot.id, ...mockPrice(23.51))
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(4)
-    expect(position3.closingRules).not.toContain(PositionClosingRule.SLT_3TICKS)
+    expect(position3.availableRules).not.toContain(
+      OrderRule.CLOSE_BY_SLT_3TICKS
+    )
 
     // 4. Закрываем при отскоке от 50% по правилу SLT_3TICKS
     await runStartegy(testBot.id, ...mockPrice(23.34))
-    expect(getLastPosition(store.getState().bots[0]).closingRules).toContain(
-      PositionClosingRule.SLT_3TICKS
+    expect(getLastPosition(store.getState().bots[0]).availableRules).toContain(
+      OrderRule.CLOSE_BY_SLT_3TICKS
     )
     // 4.1. Прострел 2 тика до уровня, чтобы не усреднять
     await runStartegy(testBot.id, ...mockPrice(23.49))
     const position4 = getLastPosition(store.getState().bots[0])
     expect(position4.status).toBe(PositionStatus.CLOSED)
-    expect(position4.closedByRule).toBe(PositionClosingRule.SLT_3TICKS)
+    expect(position4.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
 
     // 5. Открываем позицию 23.21
     await runStartegy(testBot.id, ...mockPrice(23.21))
@@ -303,6 +306,6 @@ describe('Take profit', () => {
     await runStartegy(testBot.id, ...mockPrice(22.99))
     const position6 = getLastPosition(store.getState().bots[0])
     expect(position6.status).toBe(PositionStatus.CLOSED)
-    expect(position6.closedByRule).toBe(PositionClosingRule.TP)
+    expect(position6.orders[1].rule).toBe(OrderRule.CLOSE_BY_TP)
   })
 })

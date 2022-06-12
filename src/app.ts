@@ -40,12 +40,12 @@ export const getBots = async () => {
 
   await Promise.all(
     storedBots.map(async (bot) => {
-      const { figi, exchange, isShortEnable } = await getInstrument(
-        bot.ticker,
-        bot.instrumentType
-      )
+      const instrument = await getInstrument(bot.ticker, bot.instrumentType)
 
-      const schedule = await getTradingSchedule(exchange, new Date())
+      if (!instrument.isTradeAvailable)
+        throw new Error('Instrument is not available for trade')
+
+      const schedule = await getTradingSchedule(instrument.exchange, new Date())
 
       // last trend
       const lastTrend = await db.manager.findOneOrFail(Trend, {
@@ -58,7 +58,7 @@ export const getBots = async () => {
 
       // positions of the current trading day
       const positions = await db.manager.find(Position, {
-        relations: ['openLevel', 'closedLevel'],
+        relations: ['openLevel', 'closedLevel', 'orders'],
         where: {
           bot: { id: bot.id },
           createdAt: Raw((alias) => `${alias} BETWEEN :from AND :to`, {
@@ -70,8 +70,8 @@ export const getBots = async () => {
 
       const relatedLevels = without(bot.levels, getRelatedLevels(positions))
 
-      bot.figi = figi
-      bot.isShortEnable = isShortEnable
+      bot.figi = instrument.figi
+      bot.isShortEnable = instrument.isShortEnable
       bot.positions = positions
       bot.startDate = schedule.startDate
       bot.endDate = schedule.endDate

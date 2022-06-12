@@ -2,7 +2,7 @@ jest.mock('telegraf')
 import store from '../store'
 import { initBots, editBot } from '../store/bots'
 import { getLastPosition, getLastTrend } from '../strategy/utils'
-import { TrendDirection, PositionStatus, PositionOpeningRule } from '../db'
+import { TrendDirection, PositionStatus, OrderRule } from '../db'
 import { runStartegy } from '../strategy'
 import { getTestBot, getTestLevels, getTestTrend, mockPrice } from './utils'
 
@@ -82,42 +82,46 @@ describe('Открытие позиции в направлении тренда
     await runStartegy(testBot.id, ...mockPrice(1.97))
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.openLevel.id).toBe(2)
-    expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
-    expect(lastPosition1.openedByRules).toContainEqual(
-      PositionOpeningRule['BEFORE_LEVEL_3TICKS']
+    expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
+    expect(lastPosition1.availableRules).not.toContainEqual(
+      OrderRule.OPEN_BEFORE_LEVEL_3TICKS
+    )
+    expect(lastPosition1.orders[0].rule).toBe(
+      OrderRule.OPEN_BEFORE_LEVEL_3TICKS
     )
 
     // 2. На уровне
     await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition2 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
-    expect(lastPosition2.openedByRules).toContain(
-      PositionOpeningRule['ON_LEVEL']
-    )
+    expect(lastPosition2.status).toBe(PositionStatus.OPEN_PARTIAL)
+    expect(lastPosition2.availableRules).not.toContain(OrderRule.OPEN_ON_LEVEL)
+    expect(lastPosition2.orders[1].rule).toBe(OrderRule.OPEN_ON_LEVEL)
 
     // 3. Правило не дублируем
     await runStartegy(testBot.id, ...mockPrice(2.02))
     await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition3 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition3.openedByRules).toEqual([
-      PositionOpeningRule['BEFORE_LEVEL_3TICKS'],
-      PositionOpeningRule['ON_LEVEL'],
+    expect(lastPosition3.availableRules).not.toEqual([
+      OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
+      OrderRule.OPEN_ON_LEVEL,
     ])
+    expect(lastPosition3.orders).toHaveLength(2)
 
     // 4. После 3 тиков от уровня - позиция полностью открыта
     await runStartegy(testBot.id, ...mockPrice(2.03))
     const lastPosition4 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition4.status).toBe(PositionStatus['OPEN_FULL'])
-    expect(lastPosition4.openedByRules).toEqual([
-      PositionOpeningRule['BEFORE_LEVEL_3TICKS'],
-      PositionOpeningRule['ON_LEVEL'],
-      PositionOpeningRule['AFTER_LEVEL_3TICKS'],
+    expect(lastPosition4.status).toBe(PositionStatus.OPEN_FULL)
+    expect(lastPosition4.availableRules).not.toEqual([
+      OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
+      OrderRule.OPEN_ON_LEVEL,
+      OrderRule.OPEN_AFTER_LEVEL_3TICKS,
     ])
+    expect(lastPosition4.orders[2].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
 
     // 5. Закроем позицию
     await runStartegy(testBot.id, ...mockPrice(3))
     const lastPosition5 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition5.status).toBe(PositionStatus['CLOSED'])
+    expect(lastPosition5.status).toBe(PositionStatus.CLOSED)
   })
 
   test('открывает в 3 шага в шорт', async () => {
@@ -132,32 +136,30 @@ describe('Открытие позиции в направлении тренда
     await runStartegy(testBot.id, ...mockPrice(2.03))
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.openLevel.id).toBe(2)
-    expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
-    expect(lastPosition1.openedByRules).toContainEqual(
-      PositionOpeningRule['BEFORE_LEVEL_3TICKS']
+    expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
+    expect(lastPosition1.availableRules).not.toContainEqual(
+      OrderRule.OPEN_BEFORE_LEVEL_3TICKS
     )
 
     // 2. На уровне
     await runStartegy(testBot.id, ...mockPrice(2))
     const lastPosition2 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition1.status).toBe(PositionStatus['OPEN_PARTIAL'])
-    expect(lastPosition2.openedByRules).toContain(
-      PositionOpeningRule['ON_LEVEL']
-    )
+    expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
+    expect(lastPosition2.availableRules).not.toContain(OrderRule.OPEN_ON_LEVEL)
 
     // 3. После 3 тиков от уровня - позиция полностью открыта
     await runStartegy(testBot.id, ...mockPrice(1.97))
     const lastPosition3 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition3.status).toBe(PositionStatus['OPEN_FULL'])
-    expect(lastPosition3.openedByRules).toEqual([
-      PositionOpeningRule['BEFORE_LEVEL_3TICKS'],
-      PositionOpeningRule['ON_LEVEL'],
-      PositionOpeningRule['AFTER_LEVEL_3TICKS'],
+    expect(lastPosition3.status).toBe(PositionStatus.OPEN_FULL)
+    expect(lastPosition3.availableRules).not.toEqual([
+      OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
+      OrderRule.OPEN_ON_LEVEL,
+      OrderRule.OPEN_AFTER_LEVEL_3TICKS,
     ])
 
     // 4. Закроем позицию
     await runStartegy(testBot.id, ...mockPrice(1))
     const lastPosition4 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition4.status).toBe(PositionStatus['CLOSED'])
+    expect(lastPosition4.status).toBe(PositionStatus.CLOSED)
   })
 })

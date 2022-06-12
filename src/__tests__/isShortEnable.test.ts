@@ -2,7 +2,7 @@ jest.mock('telegraf')
 import store from '../store'
 import { initBots, editBot } from '../store/bots'
 import { getLastPosition, getLastTrend } from '../strategy/utils'
-import { TrendDirection, TrendType, PositionClosingRule } from '../db'
+import { TrendDirection, TrendType, PositionStatus, OrderRule } from '../db'
 import { runStartegy } from '../strategy'
 import { getTestBot, getTestTrend, mockPrice } from './utils'
 
@@ -35,7 +35,8 @@ describe('Short enable flag', () => {
 
     await runStartegy(testBot.id, ...mockPrice(3.49))
     const lastPosition3 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition3.closedByRule).toBe(PositionClosingRule.SL)
+    expect(lastPosition3.status).toBe(PositionStatus.CLOSED)
+    expect(lastPosition3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     await runStartegy(testBot.id, ...mockPrice(3))
     const lastPosition4 = getLastPosition(store.getState().bots[0])
@@ -43,7 +44,8 @@ describe('Short enable flag', () => {
 
     await runStartegy(testBot.id, ...mockPrice(2.49))
     const lastPosition5 = getLastPosition(store.getState().bots[0])
-    expect(lastPosition5.closedByRule).toBe(PositionClosingRule.SL)
+    expect(lastPosition5.status).toBe(PositionStatus.CLOSED)
+    expect(lastPosition5.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     const trend3 = getLastTrend(store.getState().bots[0])
     expect(trend3.direction).toBe(TrendDirection.DOWN)
