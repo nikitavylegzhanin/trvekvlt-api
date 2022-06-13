@@ -2,7 +2,7 @@ import { or } from 'ramda'
 
 import store from '../store'
 import { selectBots, editBot } from '../store/bots'
-import { PositionClosingRule } from '../db/Position'
+import { OrderRule } from '../db/Order'
 import { openPosition, averagingPosition, closePosition } from './position'
 import { isTradingInterval } from './marketPhase'
 import {
@@ -36,15 +36,16 @@ import {
   isDowntrend,
   getPositionValue,
   getPositionAvgPrice,
+  isClosedBySL,
 } from './utils'
-import { Order } from '../api'
+import { PlacedOrder } from '../api'
 import { Bot } from '../db'
 import { disableBotTillTomorrow } from './bot'
 
 type PlaceOrderByDirection = (
   direction: 1 | 2,
   quantity?: number
-) => Promise<Order>
+) => Promise<PlacedOrder>
 
 export const runStartegy = async (
   botId: Bot['id'],
@@ -71,7 +72,7 @@ export const runStartegy = async (
         () => placeOrder(operation, getPositionValue(lastPosition)),
         bot.id,
         lastPosition,
-        PositionClosingRule.MARKET_PHASE_END
+        OrderRule.CLOSE_BY_MARKET_PHASE_END
       )
     }
 
@@ -119,7 +120,7 @@ export const runStartegy = async (
     if (
       !isLevelDisabled(nextLevel) &&
       !isLastLevel(nextLevel.id, levels) &&
-      (isClosed || !isAbleToCloseBySlt3Ticks(lastPosition.closingRules))
+      (isClosed || !isAbleToCloseBySlt3Ticks(lastPosition.availableRules))
     ) {
       // добавляем только если следующее правило открытия доступно
       const operation = getOpenOperation(lastTrend)
@@ -164,7 +165,7 @@ export const runStartegy = async (
         placeOrderFn,
         bot.id,
         lastPosition,
-        PositionClosingRule.TP,
+        OrderRule.CLOSE_BY_TP,
         nextLevel,
         nextLevel
       )
@@ -172,12 +173,12 @@ export const runStartegy = async (
       return
     }
 
-    if (isSlt50Percent(lastPosition.closingRules, distance)) {
+    if (isSlt50Percent(lastPosition.availableRules, distance)) {
       await closePosition(
         placeOrderFn,
         bot.id,
         lastPosition,
-        PositionClosingRule.SLT_50PERCENT,
+        OrderRule.CLOSE_BY_SLT_50PERCENT,
         lastPosition.openLevel
       )
 
@@ -187,7 +188,7 @@ export const runStartegy = async (
     // slt 3ticks
     if (
       isSlt3Ticks(
-        lastPosition.closingRules,
+        lastPosition.availableRules,
         positionAvgPrice,
         lastPrice,
         isShort
@@ -197,7 +198,7 @@ export const runStartegy = async (
         placeOrderFn,
         bot.id,
         lastPosition,
-        PositionClosingRule.SLT_3TICKS,
+        OrderRule.CLOSE_BY_SLT_3TICKS,
         lastPosition.openLevel
       )
 
@@ -211,12 +212,12 @@ export const runStartegy = async (
       lastPrice
     )
 
-    if (isSl(lastPosition.closingRules, positionProfit, distance)) {
+    if (isSl(lastPosition.availableRules, positionProfit, distance)) {
       await closePosition(
         placeOrderFn,
         bot.id,
         lastPosition,
-        PositionClosingRule.SL
+        OrderRule.CLOSE_BY_SL
       )
 
       // стоп на коррекции → выключаем движок DISABLED_TILL_TOMORROW
@@ -230,7 +231,7 @@ export const runStartegy = async (
       const { positions } = bot
       const lastClosedPosition = getLastClosedPosition(positions)
 
-      if (lastClosedPosition?.closedByRule === PositionClosingRule.SL) {
+      if (lastClosedPosition && isClosedBySL(lastClosedPosition)) {
         await addCorrectionTrend(bot.id, lastTrend)
       }
     }

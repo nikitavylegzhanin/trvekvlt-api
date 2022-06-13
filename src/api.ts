@@ -1,5 +1,7 @@
 import { OpenAPIClient } from '@tinkoff/invest-js'
 
+import { Order, OrderDirection, OrderType } from './db'
+
 const api = new OpenAPIClient({
   token: process.env.API_TOKEN_SANDBOX,
 })
@@ -8,6 +10,7 @@ type Instrument = {
   figi: string
   exchange: string
   isShortEnable: boolean
+  isTradeAvailable: boolean
 }
 
 type InstrumentType = 'future' | 'share'
@@ -24,13 +27,12 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
         )
 
         if (!instrument) return reject(new Error('Instrument not found'))
-        if (!instrument.apiTradeAvailableFlag)
-          return reject(new Error('Instrument is not available for trade'))
 
         return resolve({
           figi: instrument.figi,
           exchange: instrument.exchange,
           isShortEnable: instrument.shortEnabledFlag,
+          isTradeAvailable: instrument.apiTradeAvailableFlag,
         })
       }
     )
@@ -56,7 +58,7 @@ export const getSandboxAccountId = () =>
   )
 
 type MoneyValue = {
-  currency: string
+  currency?: string
   units: string
   nano: number
 }
@@ -66,13 +68,12 @@ const parsePrice = (value: MoneyValue) =>
     (parseInt(value.units) + value.nano / 1000000000).toFixed(2)
   )
 
-export type Order = {
-  date: Date
-  price: number
-  currency: string
-  quantity: number
-  direction: string
-  orderType: string
+export type PlacedOrder = {
+  price: Order['price']
+  currency: Order['currency']
+  quantity: Order['quantity']
+  direction: Order['direction']
+  type: Order['type']
 }
 
 /**
@@ -86,36 +87,46 @@ export const placeOrder = (
   accountId: string,
   orderType: 1 | 2 = 2
 ) =>
-  new Promise<Order>((resolve, reject) =>
+  new Promise<PlacedOrder>((resolve, reject) =>
     api.sandbox.postSandboxOrder(
       { figi, quantity, direction, accountId, orderType },
       (error, res) => {
         if (error) return reject(error)
 
         return resolve({
-          date: new Date(),
           price: parsePrice(res.totalOrderAmount),
           currency: res.totalOrderAmount.currency,
           quantity,
-          direction: res.direction,
-          orderType: res.orderType,
+          direction:
+            res.direction === 'ORDER_DIRECTION_BUY'
+              ? OrderDirection.BUY
+              : OrderDirection.SELL,
+          type:
+            res.orderType === 'ORDER_TYPE_LIMIT'
+              ? OrderType.LIMIT
+              : OrderType.MARKET,
         })
       }
     )
   )
 
 export const getOrderState = (accountId: string, orderId: string) =>
-  new Promise<Order>((resolve, reject) =>
+  new Promise<PlacedOrder>((resolve, reject) =>
     api.sandbox.getSandboxOrderState({ accountId, orderId }, (error, res) => {
       if (error) return reject(error)
 
       return resolve({
-        date: new Date(),
         price: parsePrice(res.totalOrderAmount),
         currency: res.totalOrderAmount.currency,
         quantity: Number.parseInt(res.lotsExecuted),
-        direction: res.direction,
-        orderType: res.orderType,
+        direction:
+          res.direction === 'ORDER_DIRECTION_BUY'
+            ? OrderDirection.BUY
+            : OrderDirection.SELL,
+        type:
+          res.orderType === 'ORDER_TYPE_LIMIT'
+            ? OrderType.LIMIT
+            : OrderType.MARKET,
       })
     })
   )
@@ -161,6 +172,44 @@ export const getTradingSchedule = (exchange: string, from: Date, to?: Date) =>
           premarketStartDate: parseDateToResponse(day.premarketStartTime),
           premarketEndDate: parseDateToResponse(day.premarketEndTime),
         })
+      }
+    )
+  })
+
+type Candle = {
+  date: Date
+  low: number
+  open: number
+  close: number
+  high: number
+  volume: number
+}
+
+/**
+ * @param interval 1 (CANDLE_INTERVAL_1_MIN), 2 (5_MIN), 3 (15_MIN), 4 (HOUR), 5 (DAY)
+ */
+export const getCandles = (figi: string, from: Date, to: Date, interval = 4) =>
+  new Promise<Candle[]>((resolve, reject) => {
+    api.marketData.getCandles(
+      {
+        figi,
+        from: parseDateToRequest(from),
+        to: parseDateToRequest(to),
+        interval,
+      },
+      (error, res) => {
+        if (error) return reject(error)
+
+        return resolve(
+          res.candles.map((candle) => ({
+            date: parseDateToResponse(candle.time),
+            low: parsePrice(candle.low),
+            open: parsePrice(candle.open),
+            close: parsePrice(candle.close),
+            high: parsePrice(candle.high),
+            volume: parseInt(candle.volume),
+          }))
+        )
       }
     )
   })

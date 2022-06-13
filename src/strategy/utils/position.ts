@@ -1,6 +1,6 @@
 import { pathEq, pipe, filter, propEq, findLast, T, path } from 'ramda'
 
-import { Position, PositionStatus, PositionOpeningRule } from '../../db'
+import { Position, PositionStatus, OrderRule } from '../../db'
 
 export const getLastPosition = pipe(path(['positions']), findLast<Position>(T))
 
@@ -21,27 +21,35 @@ export const getLastClosedPosition = pipe(
   findLast<Position>(T)
 )
 
+const OPEN_RULES = [
+  OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
+  OrderRule.OPEN_ON_LEVEL,
+  OrderRule.OPEN_AFTER_LEVEL_3TICKS,
+]
+
 export const getPositionNextStatus = (
-  openedByRules: Position['openedByRules']
+  availableRules: Position['availableRules']
 ) =>
-  openedByRules.length >= Object.keys(PositionOpeningRule).length
-    ? PositionStatus.OPEN_FULL
-    : PositionStatus.OPEN_PARTIAL
+  OPEN_RULES.some((openRule) => availableRules.includes(openRule))
+    ? PositionStatus.OPEN_PARTIAL
+    : PositionStatus.OPEN_FULL
 
 /**
  * Доступность правила для открытия/усреднения позиции
  */
 export const isOpeningRuleAvailable = (
-  openingRule: PositionOpeningRule,
+  openingRule: OrderRule,
   lastPosition?: Position
 ) => {
   if (!openingRule) return false
 
-  if (isLastPositionClosed(lastPosition)) return true
+  if (
+    isLastPositionClosed(lastPosition) ||
+    lastPosition.availableRules.includes(openingRule)
+  )
+    return true
 
-  if (lastPosition.openedByRules.includes(openingRule)) return false
-
-  return true
+  return false
 }
 
 /**
@@ -58,3 +66,6 @@ export const getPositionAvgPrice = (position: Position) => {
 
   return sum / position.orders.length
 }
+
+export const isClosedBySL = (position: Position) =>
+  position.orders.findIndex(propEq('rule', OrderRule.CLOSE_BY_SL)) !== -1

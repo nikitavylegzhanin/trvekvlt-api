@@ -4,6 +4,7 @@ import { Bot } from './Bot'
 import { Level } from './Level'
 import { Trend } from './Trend'
 import { Position } from './Position'
+import { Order } from './Order'
 import { Log } from './Log'
 
 const db = new DataSource({
@@ -12,7 +13,7 @@ const db = new DataSource({
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: 'postgres',
-  entities: [Bot, Level, Trend, Position, Log],
+  entities: [Bot, Level, Trend, Position, Order, Log],
   synchronize: true,
 })
 

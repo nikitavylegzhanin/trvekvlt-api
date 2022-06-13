@@ -17,45 +17,23 @@ const typeDefs = gql`
     updatedAt: Date
   }
 
-  enum PositionStatus {
-    OPENING
-    OPEN_PARTIAL
-    OPEN_FULL
-    CLOSING
-    CLOSED
-  }
-
-  enum PositionOpeningRule {
-    BEFORE_LEVEL_3TICKS
-    ON_LEVEL
-    AFTER_LEVEL_3TICKS
-  }
-
   type Order {
-    date: Date
+    id: ID
     price: Float
     currency: String
     quantity: Int
     direction: String
-    orderType: String
-  }
-
-  enum PositionClosingRule {
-    SL
-    TP
-    SLT_3TICKS
-    SLT_50PERCENT
-    MARKET_PHASE_END
-    TIME_BREAK
+    type: String
+    rule: String
+    createdAt: Date
+    updatedAt: Date
+    position: Position
   }
 
   type Position {
     id: ID
-    status: PositionStatus
-    openedByRules: [PositionOpeningRule]
-    orders: [Order]
-    closingRules: [PositionClosingRule]
-    closedByRule: PositionClosingRule
+    status: String
+    availableRules: [String]
     createdAt: Date
     updatedAt: Date
   }
@@ -111,9 +89,26 @@ const typeDefs = gql`
     createdAt: Date
   }
 
+  type Candle {
+    date: Date
+    low: Float
+    open: Float
+    close: Float
+    high: Float
+    volume: Int
+  }
+
+  type Chart {
+    candles: [Candle]
+    trends: [Trend]
+    orders: [Order]
+  }
+
   type Query {
     state: State
     log: [Log]
+    bots: [StoredBot]
+    chart(botId: ID!, from: Date!, to: Date!, interval: Int): Chart
   }
 `
 

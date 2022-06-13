@@ -1,32 +1,36 @@
-import { Order } from '../api'
 import store from '../store'
 import { StoredBot, addData, editData } from '../store/bots'
 import { getPositionNextStatus } from './utils'
 import db, {
   Level,
+  Order,
   Position,
   PositionStatus,
-  PositionOpeningRule,
-  PositionClosingRule,
+  OrderRule,
   LevelStatus,
   Log,
   LogType,
-  DEFAULT_CLOSING_RULES,
+  DEFAULT_AVAILABLE_RULES,
 } from '../db'
+import { PlacedOrder } from '../api'
 import { sendMessage } from '../telegram'
 
 /**
  * Открытие новой позиции
  */
 export const openPosition = async (
-  placeOrder: () => Promise<Order>,
+  placeOrder: () => Promise<PlacedOrder>,
   botId: StoredBot['id'],
   openLevel: Level,
-  openingRule: PositionOpeningRule
+  openingRule: OrderRule
 ) => {
   try {
     // отправляем заявку
-    const order = await placeOrder()
+    const placedOrder = await placeOrder()
+
+    const availableRules = DEFAULT_AVAILABLE_RULES.filter(
+      (rule) => rule !== openingRule
+    )
 
     if (process.env.NODE_ENV === 'test') {
       store.dispatch(
@@ -36,9 +40,17 @@ export const openPosition = async (
             openLevel,
             id: Math.floor(Math.random() * 666),
             status: PositionStatus.OPEN_PARTIAL,
-            openedByRules: [openingRule],
-            orders: [order],
-            closingRules: DEFAULT_CLOSING_RULES,
+            orders: [
+              {
+                id: Math.floor(Math.random() * 666),
+                rule: openingRule,
+                createdAt: new Date(),
+                updatedAt: null,
+                position: null,
+                ...placedOrder,
+              },
+            ],
+            availableRules,
             createdAt: new Date(),
             updatedAt: null,
             bot: null,
@@ -51,11 +63,16 @@ export const openPosition = async (
 
     // сохраняем в бд
     const { manager } = db
+
+    const order = await manager.save(
+      manager.create(Order, { rule: openingRule, ...placedOrder })
+    )
+
     const position = await manager.save(
       manager.create(Position, {
         openLevel,
         status: PositionStatus.OPEN_PARTIAL,
-        openedByRules: [openingRule],
+        availableRules,
         orders: [order],
         bot: { id: botId },
       })
@@ -90,13 +107,15 @@ export const openPosition = async (
  * Усреденение позиции
  */
 export const averagingPosition = async (
-  placeOrder: () => Promise<Order>,
+  placeOrder: () => Promise<PlacedOrder>,
   botId: StoredBot['id'],
   position: Position,
-  openingRule: PositionOpeningRule
+  averagingRule: OrderRule
 ) => {
-  const openedByRules = [...position.openedByRules, openingRule]
-  const status = getPositionNextStatus(openedByRules)
+  const availableRules = position.availableRules.filter(
+    (rule) => rule !== averagingRule
+  )
+  const status = getPositionNextStatus(availableRules)
 
   // блочим уровень, если позиция открыта полностью
   if (status === PositionStatus.OPEN_FULL) {
@@ -120,7 +139,7 @@ export const averagingPosition = async (
 
   try {
     // отправляем заявку
-    const order = await placeOrder()
+    const placedOrder = await placeOrder()
 
     // обновляем позицию в стейте
     store.dispatch(
@@ -129,8 +148,18 @@ export const averagingPosition = async (
         position: {
           id: position.id,
           status,
-          openedByRules,
-          orders: [...position.orders, order],
+          availableRules,
+          orders: [
+            ...position.orders,
+            {
+              id: Math.floor(Math.random() * 666),
+              rule: averagingRule,
+              createdAt: new Date(),
+              updatedAt: null,
+              position: null,
+              ...placedOrder,
+            },
+          ],
         },
       })
     )
@@ -140,9 +169,13 @@ export const averagingPosition = async (
     const { manager } = db
 
     // обновляем позицию в бд
+    const order = await manager.save(
+      manager.create(Order, { rule: averagingRule, ...placedOrder })
+    )
+
     await manager.update(Position, position.id, {
       status,
-      openedByRules,
+      availableRules,
       orders: [...position.orders, order],
     })
   } catch (error) {
@@ -171,16 +204,16 @@ export const averagingPosition = async (
 }
 
 export const closePosition = async (
-  placeOrder: () => Promise<Order>,
+  placeOrder: () => Promise<PlacedOrder>,
   botId: StoredBot['id'],
   position: Position,
-  closedByRule: Position['closedByRule'],
+  closingRule: OrderRule,
   disableLevel?: Level,
   closedLevel?: Level
 ) => {
   try {
     // отправляем заявку
-    const order = await placeOrder()
+    const placedOrder = await placeOrder()
 
     // обновляем стейт
     store.dispatch(
@@ -188,9 +221,18 @@ export const closePosition = async (
         botId,
         position: {
           ...position,
-          orders: [...position.orders, order],
+          orders: [
+            ...position.orders,
+            {
+              id: Math.floor(Math.random() * 666),
+              rule: closingRule,
+              createdAt: new Date(),
+              updatedAt: null,
+              position: null,
+              ...placedOrder,
+            },
+          ],
           status: PositionStatus.CLOSED,
-          closedByRule,
           closedLevel: disableLevel
             ? {
                 ...disableLevel,
@@ -212,10 +254,12 @@ export const closePosition = async (
     // обновляем позицию в бд
     const { manager } = db
 
+    const order = await manager.save(
+      manager.create(Order, { rule: closingRule, ...placedOrder })
+    )
     await manager.update(Position, position.id, {
       orders: [...position.orders, order],
       status: PositionStatus.CLOSED,
-      closedByRule,
       closedLevel,
     })
   } catch (error) {
@@ -235,17 +279,17 @@ export const closePosition = async (
   }
 }
 
-export const updatePositionClosingRules = async (
+export const updatePositionAvaiableRules = async (
   botId: StoredBot['id'],
   position: Position,
-  closingRules: PositionClosingRule[]
+  availableRules: Position['availableRules']
 ) => {
   store.dispatch(
     editData({
       botId,
       position: {
         id: position.id,
-        closingRules,
+        availableRules,
       },
     })
   )
@@ -254,7 +298,7 @@ export const updatePositionClosingRules = async (
 
   try {
     const { manager } = db
-    await manager.update(Position, position.id, { closingRules })
+    await manager.update(Position, position.id, { availableRules })
   } catch (error) {
     store.dispatch(
       editData({

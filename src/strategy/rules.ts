@@ -1,14 +1,7 @@
 import store from '../store'
 import { editData } from '../store/bots'
-import {
-  Bot,
-  Position,
-  PositionClosingRule,
-  PositionOpeningRule,
-  Level,
-  LevelStatus,
-} from '../db'
-import { updatePositionClosingRules } from './position'
+import { Bot, Position, OrderRule, Level, LevelStatus } from '../db'
+import { updatePositionAvaiableRules } from './position'
 import { isLastPositionOpen, isLevelDisabled } from './utils'
 
 enum Distance {
@@ -19,19 +12,19 @@ enum Distance {
 
 export const LEVEL_DISTANCE = 0.03
 
-const isAbleToCloseBySlt50 = (closingRules: Position['closingRules']) =>
-  closingRules.includes(PositionClosingRule.SLT_50PERCENT)
+const isAbleToCloseBySlt50 = (availableRules: Position['availableRules']) =>
+  availableRules.includes(OrderRule.CLOSE_BY_SLT_50PERCENT)
 
 export const isAbleToCloseBySlt3Ticks = (
-  closingRules: Position['closingRules']
-) => closingRules.includes(PositionClosingRule.SLT_3TICKS)
+  availableRules: Position['availableRules']
+) => availableRules.includes(OrderRule.CLOSE_BY_SLT_3TICKS)
 
 export const manageClosingRules = async (
   botId: Bot['id'],
   distance: number,
   lastPosition: Position
 ) => {
-  const closingRules = [...lastPosition.closingRules]
+  const availableRules = [...lastPosition.availableRules]
 
   if (distance >= Distance.NOT_BAD) {
     // от середины разблочим уровни (на которых открывали/закрывали позицию)
@@ -75,25 +68,25 @@ export const manageClosingRules = async (
 
     if (
       isLastPositionOpen(lastPosition.status) &&
-      !isAbleToCloseBySlt3Ticks(lastPosition.closingRules)
+      !isAbleToCloseBySlt3Ticks(lastPosition.availableRules)
     ) {
       // разрешим закрываться в 0
-      closingRules.push(PositionClosingRule.SLT_3TICKS)
+      availableRules.push(OrderRule.CLOSE_BY_SLT_3TICKS)
     }
   }
 
   if (
     distance >= Distance.GOOD &&
     isLastPositionOpen(lastPosition.status) &&
-    !isAbleToCloseBySlt50(lastPosition.closingRules)
+    !isAbleToCloseBySlt50(lastPosition.availableRules)
   ) {
     // рядом со следующим уровнем разрешим закрываться в половину прибыли
-    closingRules.push(PositionClosingRule.SLT_50PERCENT)
+    availableRules.push(OrderRule.CLOSE_BY_SLT_50PERCENT)
   }
 
   // обновляем правила закрытия при изменении
-  if (closingRules.length !== lastPosition.closingRules.length) {
-    await updatePositionClosingRules(botId, lastPosition, closingRules)
+  if (availableRules.length !== lastPosition.availableRules.length) {
+    await updatePositionAvaiableRules(botId, lastPosition, availableRules)
   }
 }
 
@@ -103,32 +96,31 @@ export const isTp = (nextLevel?: Level, lastPositionOpenLevel?: Level) =>
   nextLevel.id !== lastPositionOpenLevel?.id
 
 export const isSlt50Percent = (
-  positionClosingRules: Position['closingRules'],
+  availableRules: Position['availableRules'],
   distance: number
 ) =>
-  positionClosingRules.includes(PositionClosingRule.SLT_50PERCENT) &&
+  availableRules.includes(OrderRule.CLOSE_BY_SLT_50PERCENT) &&
   distance <= Distance.NOT_BAD
 
 export const isSlt3Ticks = (
-  positionClosingRules: Position['closingRules'],
+  availableRules: Position['availableRules'],
   positionAvgPrice: number,
   lastPrice: number,
   isShort: boolean
 ) => {
-  if (!positionClosingRules.includes(PositionClosingRule.SLT_3TICKS))
-    return false
+  if (!availableRules.includes(OrderRule.CLOSE_BY_SLT_3TICKS)) return false
 
   return isShort
-    ? lastPrice >= positionAvgPrice - 0.03
-    : Math.abs(positionAvgPrice - lastPrice) <= 0.03
+    ? lastPrice >= positionAvgPrice - LEVEL_DISTANCE
+    : Math.abs(positionAvgPrice - lastPrice) <= LEVEL_DISTANCE
 }
 
 export const isSl = (
-  positionClosingRules: Position['closingRules'],
+  availableRules: Position['availableRules'],
   positionProfit: number,
   distance: number
 ) =>
-  positionClosingRules.includes(PositionClosingRule.SL) &&
+  availableRules.includes(OrderRule.CLOSE_BY_SL) &&
   positionProfit < 0 &&
   distance >= Math.abs(Distance.BAD)
 
@@ -143,19 +135,19 @@ export const getNextOpeningRule = (
   const isLong = operation === 1
 
   if (levelValue === price) {
-    return PositionOpeningRule['ON_LEVEL']
+    return OrderRule.OPEN_ON_LEVEL
   }
 
   if (price === levelValue - LEVEL_DISTANCE) {
     return isLong
-      ? PositionOpeningRule['BEFORE_LEVEL_3TICKS']
-      : PositionOpeningRule['AFTER_LEVEL_3TICKS']
+      ? OrderRule.OPEN_BEFORE_LEVEL_3TICKS
+      : OrderRule.OPEN_AFTER_LEVEL_3TICKS
   }
 
   if (price === levelValue + LEVEL_DISTANCE) {
     return isLong
-      ? PositionOpeningRule['AFTER_LEVEL_3TICKS']
-      : PositionOpeningRule['BEFORE_LEVEL_3TICKS']
+      ? OrderRule.OPEN_AFTER_LEVEL_3TICKS
+      : OrderRule.OPEN_BEFORE_LEVEL_3TICKS
   }
 
   return null

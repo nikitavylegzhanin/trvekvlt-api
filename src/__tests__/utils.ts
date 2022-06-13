@@ -6,9 +6,11 @@ import {
   BotStatus,
   Level,
   Trend,
+  OrderType,
+  OrderDirection,
 } from '../db'
 import { StoredBot } from '../store/bots'
-import { Order } from '../api'
+import { PlacedOrder } from '../api'
 
 const date = new Date()
 
@@ -58,19 +60,17 @@ export const getTestBot = (
 
 export const mockPrice = (
   price: number
-): [number, (direction: 1 | 2, quantity: number) => Promise<Order>] => [
+): [number, (direction: 1 | 2, quantity: number) => Promise<PlacedOrder>] => [
   price,
   jest.fn(
     (direction: 1 | 2, quantity = 1) =>
-      new Promise<Order>((resolve) =>
+      new Promise<PlacedOrder>((resolve) =>
         resolve({
-          date,
           price,
           currency: 'USD',
           quantity,
-          direction:
-            direction === 1 ? 'ORDER_DIRECTION_BUY' : 'ORDER_DIRECTION_SELL',
-          orderType: 'ORDER_TYPE_MARKET',
+          direction: direction === 1 ? OrderDirection.BUY : OrderDirection.SELL,
+          type: OrderType.MARKET,
         })
       )
   ),
