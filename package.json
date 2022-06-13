@@ -1,5 +1,5 @@
 {
-  "name": "ext",
+  "name": "trvekvlt-api",
   "main": "build/index.js",
   "scripts": {
     "build": "rm -rf ./build && tsc",
