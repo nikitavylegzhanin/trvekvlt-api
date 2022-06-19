@@ -104,11 +104,41 @@ const typeDefs = gql`
     orders: [Order]
   }
 
+  type Instrument {
+    figi: String
+    ticker: String
+    name: String
+  }
+
+  type Operation {
+    id: ID
+    parentOperationId: ID
+    currency: String
+    payment: Float
+    price: Float
+    quantity: Int
+    date: Date
+    type: String
+    operationType: String
+  }
+
+  type PositionProfit {
+    usd: Float
+    percent: Float
+  }
+
+  type Position {
+    instrument: Instrument
+    profit: PositionProfit
+    operations: [Operation]
+  }
+
   type Query {
     state: State
     log: [Log]
     bots: [StoredBot]
     chart(botId: ID!, from: Date!, to: Date!, interval: Int): Chart
+    positions(from: Date!, to: Date!): [Position]
   }
 `
 

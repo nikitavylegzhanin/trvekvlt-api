@@ -1,17 +1,19 @@
 import { ApolloServer, ServerInfo } from 'apollo-server'
 
-import store from '../store'
 import typeDefs from './typeDefs'
-import resolvers from './resolvers'
-
-const context = { store }
-export type Context = typeof context
+import { state, log, positions, chart } from './resolvers'
 
 export const startServer = () => {
   const server = new ApolloServer({
     typeDefs,
-    resolvers,
-    context,
+    resolvers: {
+      Query: {
+        state,
+        log,
+        positions,
+        chart,
+      },
+    },
   })
 
   return server.listen({ port: process.env.PORT })
