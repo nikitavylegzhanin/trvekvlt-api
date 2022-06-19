@@ -3,11 +3,17 @@ import { OpenAPIClient } from '@tinkoff/invest-js'
 import { Order, OrderDirection, OrderType } from './db'
 
 const api = new OpenAPIClient({
+  token: process.env.API_TOKEN,
+})
+
+const sandboxApi = new OpenAPIClient({
   token: process.env.API_TOKEN_SANDBOX,
 })
 
 type Instrument = {
   figi: string
+  ticker: string
+  name: string
   exchange: string
   isShortEnable: boolean
   isTradeAvailable: boolean
@@ -17,19 +23,40 @@ type InstrumentType = 'future' | 'share'
 
 export const getInstrument = (ticker: string, type: InstrumentType) =>
   new Promise<Instrument>((resolve, reject) =>
-    api.instruments[type === 'future' ? 'futures' : ('shares' as 'futures')](
-      {},
-      (error, res) => {
-        if (error) return reject(error)
+    sandboxApi.instruments[
+      type === 'future' ? 'futures' : ('shares' as 'futures')
+    ]({}, (error, res) => {
+      if (error) return reject(error)
 
-        const instrument = res.instruments.find(
-          (instrument) => instrument.ticker === ticker
-        )
+      const instrument = res.instruments.find(
+        (instrument) => instrument.ticker === ticker
+      )
 
-        if (!instrument) return reject(new Error('Instrument not found'))
+      if (!instrument) return reject(new Error('Instrument not found'))
 
+      return resolve({
+        figi: instrument.figi,
+        ticker: instrument.ticker,
+        name: instrument.name,
+        exchange: instrument.exchange,
+        isShortEnable: instrument.shortEnabledFlag,
+        isTradeAvailable: instrument.apiTradeAvailableFlag,
+      })
+    })
+  )
+
+export const getInstrumentByFigi = (figi: string) =>
+  new Promise<Instrument>((resolve, reject) =>
+    sandboxApi.instruments.getInstrumentBy(
+      { idType: 'INSTRUMENT_ID_TYPE_FIGI', id: figi },
+      (err, res) => {
+        if (err) return reject(err)
+
+        const { instrument } = res
         return resolve({
           figi: instrument.figi,
+          ticker: instrument.ticker,
+          name: instrument.name,
           exchange: instrument.exchange,
           isShortEnable: instrument.shortEnabledFlag,
           isTradeAvailable: instrument.apiTradeAvailableFlag,
@@ -38,18 +65,18 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
     )
   )
 
-export const marketDataStream = api.marketDataStream.marketDataStream()
+export const marketDataStream = sandboxApi.marketDataStream.marketDataStream()
 
 export const getSandboxAccountId = () =>
   new Promise<string>((resolve, reject) =>
-    api.sandbox.getSandboxAccounts({}, (error, { accounts }) => {
+    sandboxApi.sandbox.getSandboxAccounts({}, (error, { accounts }) => {
       if (error) return reject(error)
 
       const [account] = accounts
 
       if (account) return resolve(account.id)
 
-      api.sandbox.openSandboxAccount({}, (error, { accountId }) => {
+      sandboxApi.sandbox.openSandboxAccount({}, (error, { accountId }) => {
         if (error) return reject(error)
 
         return resolve(accountId)
@@ -63,7 +90,7 @@ type MoneyValue = {
   nano: number
 }
 
-const parsePrice = (value: MoneyValue) =>
+export const parsePrice = (value: MoneyValue) =>
   Number.parseFloat(
     (parseInt(value.units) + value.nano / 1000000000).toFixed(2)
   )
@@ -88,7 +115,7 @@ export const placeOrder = (
   orderType: 1 | 2 = 2
 ) =>
   new Promise<PlacedOrder>((resolve, reject) =>
-    api.sandbox.postSandboxOrder(
+    sandboxApi.sandbox.postSandboxOrder(
       { figi, quantity, direction, accountId, orderType },
       (error, res) => {
         if (error) return reject(error)
@@ -112,26 +139,29 @@ export const placeOrder = (
 
 export const getOrderState = (accountId: string, orderId: string) =>
   new Promise<PlacedOrder>((resolve, reject) =>
-    api.sandbox.getSandboxOrderState({ accountId, orderId }, (error, res) => {
-      if (error) return reject(error)
+    sandboxApi.sandbox.getSandboxOrderState(
+      { accountId, orderId },
+      (error, res) => {
+        if (error) return reject(error)
 
-      return resolve({
-        price: parsePrice(res.totalOrderAmount),
-        currency: res.totalOrderAmount.currency,
-        quantity: Number.parseInt(res.lotsExecuted),
-        direction:
-          res.direction === 'ORDER_DIRECTION_BUY'
-            ? OrderDirection.BUY
-            : OrderDirection.SELL,
-        type:
-          res.orderType === 'ORDER_TYPE_LIMIT'
-            ? OrderType.LIMIT
-            : OrderType.MARKET,
-      })
-    })
+        return resolve({
+          price: parsePrice(res.totalOrderAmount),
+          currency: res.totalOrderAmount.currency,
+          quantity: Number.parseInt(res.lotsExecuted),
+          direction:
+            res.direction === 'ORDER_DIRECTION_BUY'
+              ? OrderDirection.BUY
+              : OrderDirection.SELL,
+          type:
+            res.orderType === 'ORDER_TYPE_LIMIT'
+              ? OrderType.LIMIT
+              : OrderType.MARKET,
+        })
+      }
+    )
   )
 
-const parseDateToRequest = (date: Date) => ({
+export const parseDateToRequest = (date: Date) => ({
   seconds: Math.floor(date.getTime() / 1000),
   nanos: (date.getTime() % 1000) * 1e6,
 })
@@ -141,7 +171,7 @@ type Timestamp = {
   nanos: number
 }
 
-const parseDateToResponse = (timestamp?: Timestamp) =>
+export const parseDateToResponse = (timestamp?: Timestamp) =>
   timestamp ? new Date(Number.parseInt(timestamp.seconds) * 1000) : null
 
 type TradingSchedule = {
@@ -154,7 +184,7 @@ type TradingSchedule = {
 
 export const getTradingSchedule = (exchange: string, from: Date, to?: Date) =>
   new Promise<TradingSchedule>((resolve, reject) => {
-    api.instruments.tradingSchedules(
+    sandboxApi.instruments.tradingSchedules(
       {
         exchange,
         from: parseDateToRequest(from),
@@ -190,7 +220,7 @@ type Candle = {
  */
 export const getCandles = (figi: string, from: Date, to: Date, interval = 4) =>
   new Promise<Candle[]>((resolve, reject) => {
-    api.marketData.getCandles(
+    sandboxApi.marketData.getCandles(
       {
         figi,
         from: parseDateToRequest(from),
@@ -213,3 +243,91 @@ export const getCandles = (figi: string, from: Date, to: Date, interval = 4) =>
       }
     )
   })
+
+//
+// Prod methods
+// ------------
+
+type Account = {
+  id: string
+}
+
+export const getAccounts = () =>
+  new Promise<Account[]>((resolve, reject) =>
+    api.usersService.getAccounts({}, (error, res) => {
+      if (error) return reject(error)
+
+      return resolve(res.accounts)
+    })
+  )
+
+export type Operation = {
+  id: string
+  figi: string
+  parentOperationId: string
+  currency: string
+  payment: number
+  price: number
+  quantity: number
+  date: Date
+  type: string
+  operationType: string
+}
+
+export const getOperations = (
+  accountId: string,
+  from: Date,
+  to: Date,
+  state = 1,
+  figi?: string
+) =>
+  new Promise<Operation[]>((resolve, reject) =>
+    api.operations.getOperations(
+      {
+        accountId,
+        from: parseDateToRequest(from),
+        to: parseDateToRequest(to),
+        state,
+        figi,
+      },
+      (error, res) => {
+        if (error) return reject(error)
+
+        return resolve(
+          res.operations.map((operation) => ({
+            id: operation.id,
+            figi: operation.figi,
+            parentOperationId: operation.parentOperationId,
+            currency: operation.currency,
+            payment: parsePrice(operation.payment),
+            price: parsePrice(operation.price),
+            quantity: parseInt(operation.quantity),
+            date: parseDateToResponse(operation.date),
+            type: operation.type,
+            operationType: operation.operationType,
+          }))
+        )
+      }
+    )
+  )
+
+export type PortfolioPosition = {
+  figi: string
+  instrumentType: string
+  quantity: number
+}
+
+export const getOpenPositions = (accountId: string) =>
+  new Promise<PortfolioPosition[]>((resolve, reject) =>
+    api.operations.getPortfolio({ accountId }, (err, res) => {
+      if (err) return reject(err)
+
+      return resolve(
+        res.positions.map((position) => ({
+          figi: position.figi,
+          instrumentType: position.instrumentType,
+          quantity: parsePrice(position.quantity),
+        }))
+      )
+    })
+  )
