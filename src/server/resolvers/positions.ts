@@ -81,43 +81,44 @@ const getStartedPosition = (operation: Operation): Position => ({
   operations: [operation],
 })
 
+const calcOperationsQt = (sum: number, operation: Operation) =>
+  sum +
+  operation.quantity *
+    (operation.operationType === 'OPERATION_TYPE_SELL' ? -1 : 1)
+
+const calcOperationsPayment = (sum: number, operation: Operation) =>
+  sum + operation.payment
+
 const groupByPositions = (positions: Position[], operation: Operation) => {
   if (!positions.length) return [getStartedPosition(operation)]
 
   const lastPosition = positions[positions.length - 1]
-  const lastPositionQt = lastPosition.operations.reduce(
-    (sum, operation) =>
-      sum +
-      operation.quantity *
-        (operation.operationType === 'OPERATION_TYPE_SELL' ? -1 : 1),
-    0
-  )
+  if (lastPosition.isClosed)
+    return [...positions, getStartedPosition(operation)]
+
+  lastPosition.profit.usd =
+    lastPosition.profit.usd + getOperationPaymentUsd(operation)
+  lastPosition.operations.push(operation)
+
+  const lastPositionQt = lastPosition.operations.reduce(calcOperationsQt, 0)
 
   if (!lastPositionQt) {
     const paymentBuySum = lastPosition.operations
       .filter(propEq('operationType', 'OPERATION_TYPE_BUY'))
-      .reduce((sum, operation) => sum + operation.payment, 0)
+      .reduce(calcOperationsPayment, 0)
     const paymentSellSum = lastPosition.operations
       .filter(propEq('operationType', 'OPERATION_TYPE_SELL'))
-      .reduce((sum, operation) => sum + operation.payment, 0)
+      .reduce(calcOperationsPayment, 0)
 
     lastPosition.profit.percent =
       (100 / (Math.abs(paymentBuySum) / paymentSellSum) - 100) * 0.01
     lastPosition.isClosed = true
-
-    return [...positions, getStartedPosition(operation)]
   }
-
-  lastPosition.profit = {
-    usd: lastPosition.profit.usd + getOperationPaymentUsd(operation),
-    percent: 0,
-  }
-  lastPosition.operations.push(operation)
 
   return positions
 }
 
-const addInstrumentData = async (positions: Position[]) => {
+const addInstrumentInfo = async (positions: Position[]) => {
   const instrument = await getInstrumentByFigi(positions[0].instrument.figi)
 
   return positions.map((value) => ({ ...value, instrument }))
@@ -162,11 +163,11 @@ export const positions: Config['fieldResolver'] = async (
     .map((values) => values.filter(propEq('isClosed', true)))
     .filter((values) => values.length)
 
-  const positionsWithInstrumentData = await Promise.all(
-    positions.map(addInstrumentData)
+  const positionsWithInstrumentInfo = await Promise.all(
+    positions.map(addInstrumentInfo)
   )
 
-  return positionsWithInstrumentData.reduce(
+  return positionsWithInstrumentInfo.reduce(
     (arr, value) => [...arr, ...value],
     []
   )
