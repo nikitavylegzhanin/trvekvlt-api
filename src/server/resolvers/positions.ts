@@ -74,6 +74,7 @@ const getOperationPaymentUsd = (operation: Operation) =>
 
 const getStartedPosition = (operation: Operation): Position => ({
   isClosed: false,
+  closedAt: null,
   instrument: {
     figi: operation.figi,
   },
@@ -113,6 +114,7 @@ const groupByPositions = (positions: Position[], operation: Operation) => {
     lastPosition.profit.percent =
       (100 / (Math.abs(paymentBuySum) / paymentSellSum) - 100) * 0.01
     lastPosition.isClosed = true
+    lastPosition.closedAt = lastPosition.operations[0].date
   }
 
   return positions
@@ -131,6 +133,7 @@ type Args = {
 
 type Position = {
   isClosed: boolean
+  closedAt: Date
   instrument: {
     figi: string
     ticker?: string
