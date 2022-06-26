@@ -1,7 +1,7 @@
 import { ApolloServer, ServerInfo } from 'apollo-server'
 
 import typeDefs from './typeDefs'
-import { state, log, positions, chart } from './resolvers'
+import { state, log, bots, positions, chart } from './resolvers'
 
 export const startServer = () => {
   const server = new ApolloServer({
@@ -10,6 +10,7 @@ export const startServer = () => {
       Query: {
         state,
         log,
+        bots,
         positions,
         chart,
       },
