@@ -27,15 +27,6 @@ const typeDefs = gql`
     rule: String
     createdAt: Date
     updatedAt: Date
-    position: Position
-  }
-
-  type Position {
-    id: ID
-    status: String
-    availableRules: [String]
-    createdAt: Date
-    updatedAt: Date
   }
 
   enum TrendDirection {
@@ -76,7 +67,7 @@ const typeDefs = gql`
     createdAt: Date
     updatedAt: Date
     levels: [Level]
-    positions: [Position]
+    orders: [Order]
     trends: [Trend]
   }
 
