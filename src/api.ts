@@ -124,8 +124,8 @@ export const placeOrder = (
         if (error) return reject(error)
 
         return resolve({
-          price: parsePrice(res.totalOrderAmount),
-          currency: res.totalOrderAmount.currency,
+          price: parsePrice(res.executedOrderPrice),
+          currency: res.executedOrderPrice.currency,
           quantity,
           direction:
             res.direction === 'ORDER_DIRECTION_BUY'
@@ -148,8 +148,8 @@ export const getOrderState = (accountId: string, orderId: string) =>
         if (error) return reject(error)
 
         return resolve({
-          price: parsePrice(res.totalOrderAmount),
-          currency: res.totalOrderAmount.currency,
+          price: parsePrice(res.executedOrderPrice),
+          currency: res.executedOrderPrice.currency,
           quantity: Number.parseInt(res.lotsExecuted),
           direction:
             res.direction === 'ORDER_DIRECTION_BUY'
