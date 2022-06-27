@@ -17,6 +17,7 @@ type Instrument = {
   exchange: string
   isShortEnable: boolean
   isTradeAvailable: boolean
+  tickValue: number
 }
 
 type InstrumentType = 'future' | 'share'
@@ -41,6 +42,7 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
         exchange: instrument.exchange,
         isShortEnable: instrument.shortEnabledFlag,
         isTradeAvailable: instrument.apiTradeAvailableFlag,
+        tickValue: parsePrice(instrument.minPriceIncrement),
       })
     })
   )
@@ -60,6 +62,7 @@ export const getInstrumentByFigi = (figi: string) =>
           exchange: instrument.exchange,
           isShortEnable: instrument.shortEnabledFlag,
           isTradeAvailable: instrument.apiTradeAvailableFlag,
+          tickValue: parsePrice(instrument.minPriceIncrement),
         })
       }
     )
