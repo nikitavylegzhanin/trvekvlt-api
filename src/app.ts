@@ -34,6 +34,7 @@ export const getBots = async () => {
     startDate: null,
     endDate: null,
     isShortEnable: false,
+    tickValue: 0,
     positions: [],
     trends: [],
   }))
@@ -49,6 +50,7 @@ export const getBots = async () => {
 
       // last trend
       const lastTrend = await db.manager.findOneOrFail(Trend, {
+        order: { createdAt: 'DESC' },
         where: {
           bot: {
             id: bot.id,
@@ -72,6 +74,7 @@ export const getBots = async () => {
 
       bot.figi = instrument.figi
       bot.isShortEnable = instrument.isShortEnable
+      bot.tickValue = instrument.tickValue
       bot.positions = positions
       bot.startDate = schedule.startDate
       bot.endDate = schedule.endDate

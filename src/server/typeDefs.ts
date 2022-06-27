@@ -68,6 +68,7 @@ const typeDefs = gql`
     name: String
     ticker: String
     figi: String
+    tickValue: Float
     isShortEnable: Boolean
     startDate: Date
     endDate: Date

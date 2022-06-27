@@ -56,6 +56,7 @@ export const getTestBot = (
   figi: 't3st',
   instrumentType: InstrumentType.SHARE,
   isShortEnable: true,
+  tickValue: 0.01,
 })
 
 export const mockPrice = (

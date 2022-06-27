@@ -17,6 +17,7 @@ type Instrument = {
   exchange: string
   isShortEnable: boolean
   isTradeAvailable: boolean
+  tickValue: number
 }
 
 type InstrumentType = 'future' | 'share'
@@ -41,6 +42,7 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
         exchange: instrument.exchange,
         isShortEnable: instrument.shortEnabledFlag,
         isTradeAvailable: instrument.apiTradeAvailableFlag,
+        tickValue: parsePrice(instrument.minPriceIncrement),
       })
     })
   )
@@ -60,6 +62,7 @@ export const getInstrumentByFigi = (figi: string) =>
           exchange: instrument.exchange,
           isShortEnable: instrument.shortEnabledFlag,
           isTradeAvailable: instrument.apiTradeAvailableFlag,
+          tickValue: parsePrice(instrument.minPriceIncrement),
         })
       }
     )
@@ -121,8 +124,8 @@ export const placeOrder = (
         if (error) return reject(error)
 
         return resolve({
-          price: parsePrice(res.totalOrderAmount),
-          currency: res.totalOrderAmount.currency,
+          price: parsePrice(res.executedOrderPrice),
+          currency: res.executedOrderPrice.currency,
           quantity,
           direction:
             res.direction === 'ORDER_DIRECTION_BUY'
@@ -145,8 +148,8 @@ export const getOrderState = (accountId: string, orderId: string) =>
         if (error) return reject(error)
 
         return resolve({
-          price: parsePrice(res.totalOrderAmount),
-          currency: res.totalOrderAmount.currency,
+          price: parsePrice(res.executedOrderPrice),
+          currency: res.executedOrderPrice.currency,
           quantity: Number.parseInt(res.lotsExecuted),
           direction:
             res.direction === 'ORDER_DIRECTION_BUY'
