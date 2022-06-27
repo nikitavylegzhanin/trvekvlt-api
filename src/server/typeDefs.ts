@@ -128,6 +128,7 @@ const typeDefs = gql`
   }
 
   type Position {
+    closedAt: Date
     instrument: Instrument
     profit: PositionProfit
     operations: [Operation]
