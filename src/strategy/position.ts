@@ -173,11 +173,23 @@ export const averagingPosition = async (
       manager.create(Order, { rule: averagingRule, ...placedOrder })
     )
 
-    await manager.update(Position, position.id, {
+    const { orders } = await manager.save(Position, {
+      ...position,
       status,
       availableRules,
       orders: [...position.orders, order],
     })
+
+    // обновляем заявки
+    store.dispatch(
+      editData({
+        botId,
+        position: {
+          id: position.id,
+          orders,
+        },
+      })
+    )
   } catch (error) {
     // откатываем позицию в стейте
     store.dispatch(
@@ -220,7 +232,7 @@ export const closePosition = async (
       editData({
         botId,
         position: {
-          ...position,
+          id: position.id,
           orders: [
             ...position.orders,
             {
@@ -257,11 +269,24 @@ export const closePosition = async (
     const order = await manager.save(
       manager.create(Order, { rule: closingRule, ...placedOrder })
     )
-    await manager.update(Position, position.id, {
-      orders: [...position.orders, order],
-      status: PositionStatus.CLOSED,
+
+    const { orders } = await manager.save(Position, {
+      ...position,
       closedLevel,
+      status: PositionStatus.CLOSED,
+      orders: [...position.orders, order],
     })
+
+    // обновляем заявки
+    store.dispatch(
+      editData({
+        botId,
+        position: {
+          id: position.id,
+          orders,
+        },
+      })
+    )
   } catch (error) {
     const type = LogType.ERROR
     const message = JSON.stringify(error)
