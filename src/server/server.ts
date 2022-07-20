@@ -1,21 +1,15 @@
+import 'reflect-metadata'
 import { ApolloServer, ServerInfo } from 'apollo-server'
+import { buildSchema } from 'type-graphql'
 
-import typeDefs from './typeDefs'
-import { state, log, bots, positions, chart } from './resolvers'
+import resolvers from './resolvers'
 
-export const startServer = () => {
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers: {
-      Query: {
-        state,
-        log,
-        bots,
-        positions,
-        chart,
-      },
-    },
+export const startServer = async () => {
+  const schema = await buildSchema({
+    resolvers,
   })
+
+  const server = new ApolloServer({ schema })
 
   return server.listen({ port: process.env.PORT })
 }

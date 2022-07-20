@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
 } from 'typeorm'
+import { ObjectType, Field, ID, registerEnumType } from 'type-graphql'
 
 import { Order, OrderRule } from './Order'
 import { Level } from './Level'
@@ -19,6 +20,7 @@ export enum PositionStatus {
   CLOSING = 'CLOSING',
   CLOSED = 'CLOSED',
 }
+registerEnumType(PositionStatus, { name: 'PositionStatus' })
 
 export const DEFAULT_AVAILABLE_RULES = [
   OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
@@ -30,13 +32,17 @@ export const DEFAULT_AVAILABLE_RULES = [
 ]
 
 @Entity()
+@ObjectType()
 export class Position {
+  @Field(() => ID)
   @PrimaryGeneratedColumn()
   id: number
 
+  @Field(() => PositionStatus)
   @Column('enum', { enum: PositionStatus, default: PositionStatus.OPENING })
   status: PositionStatus
 
+  @Field(() => [OrderRule])
   @Column('enum', {
     enum: OrderRule,
     array: true,
@@ -44,21 +50,27 @@ export class Position {
   })
   availableRules: OrderRule[]
 
+  @Field(() => Date)
   @CreateDateColumn()
   createdAt: Date
 
+  @Field(() => Date)
   @UpdateDateColumn()
   updatedAt: Date
 
+  @Field(() => Level)
   @ManyToOne(() => Level, (level) => level.openPositions)
   openLevel: Level
 
+  @Field(() => Level)
   @ManyToOne(() => Level, (level) => level.closedPositions)
   closedLevel?: Level
 
+  @Field(() => Bot)
   @ManyToOne(() => Bot, (bot) => bot.positions)
   bot: Bot
 
+  @Field(() => [Order])
   @OneToMany(() => Order, (order) => order.position)
   orders: Order[]
 }

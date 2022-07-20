@@ -1,8 +1,13 @@
-import { Config } from 'apollo-server'
+import { Resolver, Query } from 'type-graphql'
 
 import db, { Bot } from '../../db'
 
-export const bots: Config['fieldResolver'] = () =>
-  db.manager.find(Bot, {
-    relations: ['levels'],
-  })
+@Resolver()
+export class BotsResolver {
+  @Query(() => [Bot])
+  bots() {
+    return db.manager.find(Bot, {
+      relations: ['levels'],
+    })
+  }
+}
