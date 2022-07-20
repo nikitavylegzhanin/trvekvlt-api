@@ -1,4 +1,13 @@
-import { Config } from 'apollo-server'
+import {
+  Resolver,
+  Query,
+  Arg,
+  ObjectType,
+  Field,
+  Float,
+  Int,
+  ID,
+} from 'type-graphql'
 import { propEq } from 'ramda'
 
 import {
@@ -6,9 +15,71 @@ import {
   getAccounts,
   getOpenPositions,
   getOperations,
-  Operation,
   PortfolioPosition,
 } from '../../api'
+
+@ObjectType()
+class Instrument {
+  @Field(() => String)
+  figi: string
+
+  @Field(() => String, { nullable: true })
+  ticker?: string
+
+  @Field(() => String, { nullable: true })
+  name?: string
+}
+
+@ObjectType()
+class Profit {
+  @Field(() => Float)
+  usd: number
+
+  @Field(() => Float)
+  percent: number
+}
+
+@ObjectType()
+class Operation {
+  @Field(() => ID)
+  id: string
+  @Field(() => String)
+  figi: string
+  @Field(() => String)
+  parentOperationId: string
+  @Field(() => String)
+  currency: string
+  @Field(() => Float)
+  payment: number
+  @Field(() => Float)
+  price: number
+  @Field(() => Int)
+  quantity: number
+  @Field(() => Date)
+  date: Date
+  @Field(() => String)
+  type: string
+  @Field(() => String)
+  operationType: string
+}
+
+@ObjectType()
+class ManualPosition {
+  @Field(() => Boolean)
+  isClosed: boolean
+
+  @Field(() => Date)
+  closedAt: Date
+
+  @Field(() => Instrument)
+  instrument: Instrument
+
+  @Field(() => Profit)
+  profit: Profit
+
+  @Field(() => [Operation])
+  operations: Operation[]
+}
 
 const isShares = (portfolioPosition: PortfolioPosition) =>
   portfolioPosition.instrumentType === 'share'
@@ -72,7 +143,7 @@ const isClosedOperations =
 const getOperationPaymentUsd = (operation: Operation) =>
   operation.currency === 'usd' ? operation.payment : 0 // TODO: convert to usd
 
-const getStartedPosition = (operation: Operation): Position => ({
+const getStartedPosition = (operation: Operation): ManualPosition => ({
   isClosed: false,
   closedAt: null,
   instrument: {
@@ -90,7 +161,10 @@ const calcOperationsQt = (sum: number, operation: Operation) =>
 const calcOperationsPayment = (sum: number, operation: Operation) =>
   sum + operation.payment
 
-const groupByPositions = (positions: Position[], operation: Operation) => {
+const groupByPositions = (
+  positions: ManualPosition[],
+  operation: Operation
+) => {
   if (!positions.length) return [getStartedPosition(operation)]
 
   const lastPosition = positions[positions.length - 1]
@@ -120,58 +194,39 @@ const groupByPositions = (positions: Position[], operation: Operation) => {
   return positions
 }
 
-const addInstrumentInfo = async (positions: Position[]) => {
+const addInstrumentInfo = async (positions: ManualPosition[]) => {
   const instrument = await getInstrumentByFigi(positions[0].instrument.figi)
 
   return positions.map((value) => ({ ...value, instrument }))
 }
 
-type Args = {
-  from: Date
-  to: Date
-}
+@Resolver()
+export class PositionsResolver {
+  @Query(() => [ManualPosition])
+  async positions(
+    @Arg('from') from: Date,
+    @Arg('to') to: Date
+  ): Promise<ManualPosition[]> {
+    const [account] = await getAccounts()
+    const openPortfolioPositions = await getOpenPositions(account.id)
+    const allOperations = await getOperations(account.id, from, to, 1)
 
-type Position = {
-  isClosed: boolean
-  closedAt: Date
-  instrument: {
-    figi: string
-    ticker?: string
-    name?: string
+    const positions = allOperations
+      .map(sumWithBrokerFee)
+      .filter(isBuyOrSellOperation)
+      .filter(isClosedOperations(openPortfolioPositions.filter(isShares)))
+      .reduce(groupByFigi, [])
+      .map((values) => values.reduce(groupByPositions, []))
+      .map((values) => values.filter(propEq('isClosed', true)))
+      .filter((values) => values.length)
+
+    const positionsWithInstrumentInfo = await Promise.all(
+      positions.map(addInstrumentInfo)
+    )
+
+    return positionsWithInstrumentInfo.reduce(
+      (arr, value) => [...arr, ...value],
+      []
+    )
   }
-  profit: {
-    usd: number
-    percent: number
-  }
-  operations: Operation[]
-}
-
-export const positions: Config['fieldResolver'] = async (
-  _parent,
-  args: Args
-) => {
-  const from = new Date(args.from)
-  const to = new Date(args.to)
-
-  const [account] = await getAccounts()
-  const openPortfolioPositions = await getOpenPositions(account.id)
-  const allOperations = await getOperations(account.id, from, to, 1)
-
-  const positions = allOperations
-    .map(sumWithBrokerFee)
-    .filter(isBuyOrSellOperation)
-    .filter(isClosedOperations(openPortfolioPositions.filter(isShares)))
-    .reduce(groupByFigi, [])
-    .map((values) => values.reduce(groupByPositions, []))
-    .map((values) => values.filter(propEq('isClosed', true)))
-    .filter((values) => values.length)
-
-  const positionsWithInstrumentInfo = await Promise.all(
-    positions.map(addInstrumentInfo)
-  )
-
-  return positionsWithInstrumentInfo.reduce(
-    (arr, value) => [...arr, ...value],
-    []
-  )
 }

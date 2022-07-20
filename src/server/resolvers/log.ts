@@ -1,3 +1,11 @@
+import { Resolver, Query } from 'type-graphql'
+
 import db, { Log } from '../../db'
 
-export const log = () => db.manager.find(Log)
+@Resolver()
+export class LogResolver {
+  @Query(() => [Log])
+  log() {
+    return db.manager.find(Log)
+  }
+}
