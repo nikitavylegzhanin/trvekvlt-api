@@ -6,7 +6,10 @@ import db, { Bot, Level, LevelStatus } from '../../db'
 export class LevelsResolver {
   @Query(() => [Level])
   levels(@Arg('botId', () => ID) botId: Bot['id']): Promise<Level[]> {
-    return db.manager.find(Level, { where: { bot: { id: botId } } })
+    return db.manager.find(Level, {
+      where: { bot: { id: botId } },
+      relations: ['openPositions', 'closedPositions'],
+    })
   }
 
   @Mutation(() => Level)
