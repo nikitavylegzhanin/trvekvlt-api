@@ -6,6 +6,7 @@ import { BotsResolver } from './bots'
 import { PositionsResolver } from './positions'
 import { ChartResolver } from './chart'
 import { LevelsResolver } from './levels'
+import { TrendsResolver } from './trends'
 
 const resolvers: NonEmptyArray<Function> = [
   StateResolver,
@@ -14,6 +15,7 @@ const resolvers: NonEmptyArray<Function> = [
   BotsResolver,
   ChartResolver,
   LevelsResolver,
+  TrendsResolver,
 ]
 
 export default resolvers
