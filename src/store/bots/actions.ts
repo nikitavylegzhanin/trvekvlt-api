@@ -4,6 +4,7 @@ import { StoredBot } from './reducer'
 
 export enum BotActionType {
   INIT = 'Bot/INIT',
+  ADD = 'Bot/ADD',
   EDIT = 'Bot/EDIT',
   ADD_DATA = 'Bot/ADD_DATA',
   EDIT_DATA = 'Bot/EDIT_DATA',
@@ -14,6 +15,9 @@ export const initBots: ActionCreatorWithPayload<
   StoredBot[],
   BotActionType.INIT
 > = createAction(BotActionType.INIT)
+
+export const addBot: ActionCreatorWithPayload<StoredBot, BotActionType.ADD> =
+  createAction(BotActionType.ADD)
 
 export const editBot: ActionCreatorWithPayload<
   Partial<StoredBot>,
