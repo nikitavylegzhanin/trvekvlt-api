@@ -23,67 +23,56 @@ const getRelatedLevels = pipe(
   uniq
 )
 
+export const toStore = async (bot: Bot): Promise<StoredBot> => {
+  const instrument = await getInstrument(bot.ticker, bot.instrumentType)
+
+  if (!instrument.isTradeAvailable)
+    throw new Error('Instrument is not available for trade')
+
+  const schedule = await getTradingSchedule(instrument.exchange, new Date())
+
+  // last trend
+  const lastTrend = await db.manager.findOneOrFail(Trend, {
+    order: { createdAt: 'DESC' },
+    where: {
+      bot: {
+        id: bot.id,
+      },
+    },
+  })
+
+  // positions of the current trading day
+  const positions = await db.manager.find(Position, {
+    relations: ['openLevel', 'closedLevel', 'orders'],
+    where: {
+      bot: { id: bot.id },
+      createdAt: Raw((alias) => `${alias} BETWEEN :from AND :to`, {
+        from: new Date(new Date().setHours(0, 0, 1, 0)),
+        to: new Date(new Date().setHours(23, 59, 59, 0)),
+      }),
+    },
+  })
+
+  const relatedLevels = without(bot.levels, getRelatedLevels(positions))
+
+  return {
+    ...bot,
+    positions,
+    trends: [lastTrend],
+    levels: [...bot.levels, ...relatedLevels],
+    figi: instrument.figi,
+    isShortEnable: instrument.isShortEnable,
+    tickValue: instrument.tickValue,
+    startDate: schedule.startDate,
+    endDate: schedule.endDate,
+  }
+}
+
 export const getBots = async () => {
   const bots = await db.manager.find(Bot, {
     relations: ['levels'],
   })
-
-  const storedBots: StoredBot[] = [...bots].map((bot) => ({
-    ...bot,
-    figi: '',
-    startDate: null,
-    endDate: null,
-    isShortEnable: false,
-    tickValue: 0,
-    positions: [],
-    trends: [],
-  }))
-
-  await Promise.all(
-    storedBots.map(async (bot) => {
-      const instrument = await getInstrument(bot.ticker, bot.instrumentType)
-
-      if (!instrument.isTradeAvailable)
-        throw new Error('Instrument is not available for trade')
-
-      const schedule = await getTradingSchedule(instrument.exchange, new Date())
-
-      // last trend
-      const lastTrend = await db.manager.findOneOrFail(Trend, {
-        order: { createdAt: 'DESC' },
-        where: {
-          bot: {
-            id: bot.id,
-          },
-        },
-      })
-
-      // positions of the current trading day
-      const positions = await db.manager.find(Position, {
-        relations: ['openLevel', 'closedLevel', 'orders'],
-        where: {
-          bot: { id: bot.id },
-          createdAt: Raw((alias) => `${alias} BETWEEN :from AND :to`, {
-            from: new Date(new Date().setHours(0, 0, 1, 0)),
-            to: new Date(new Date().setHours(23, 59, 59, 0)),
-          }),
-        },
-      })
-
-      const relatedLevels = without(bot.levels, getRelatedLevels(positions))
-
-      bot.figi = instrument.figi
-      bot.isShortEnable = instrument.isShortEnable
-      bot.tickValue = instrument.tickValue
-      bot.positions = positions
-      bot.startDate = schedule.startDate
-      bot.endDate = schedule.endDate
-      bot.trends = [lastTrend]
-      bot.levels = [...bot.levels, ...relatedLevels]
-
-      return bot
-    })
-  )
+  const storedBots = await Promise.all(bots.map(toStore))
 
   store.dispatch(initBots(storedBots))
 

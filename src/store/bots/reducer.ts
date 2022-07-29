@@ -1,7 +1,14 @@
 import { createReducer } from '@reduxjs/toolkit'
 
 import { Bot } from '../../db'
-import { initBots, editBot, addData, editData, removeData } from './actions'
+import {
+  initBots,
+  addBot,
+  editBot,
+  addData,
+  editData,
+  removeData,
+} from './actions'
 
 const payloadDataKeys = ['level', 'position', 'trend']
 type botDataValue = Bot['levels'][0] | Bot['positions'][0] | Bot['trends'][0]
@@ -17,6 +24,7 @@ export type StoredBot = Bot & {
 const reducer = createReducer<StoredBot[]>([], (builder) =>
   builder
     .addCase(initBots, (_bots, action) => action.payload)
+    .addCase(addBot, (bots, action) => [...bots, action.payload])
     .addCase(editBot, (bots, action) =>
       bots.map((bot) =>
         bot.id === action.payload.id ? { ...bot, ...action.payload } : bot

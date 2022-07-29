@@ -99,7 +99,7 @@ export class ChartResolver {
 
     return {
       candles,
-      trends: [firstTrend, ...trends],
+      trends: [firstTrend, ...trends].filter((trend) => !!trend),
       orders,
     }
   }
