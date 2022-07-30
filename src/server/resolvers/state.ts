@@ -8,10 +8,10 @@ class StoredBot extends Bot {
   @Field(() => String)
   figi: string
 
-  @Field(() => Date)
+  @Field(() => Date, { nullable: true })
   startDate: Date
 
-  @Field(() => Date)
+  @Field(() => Date, { nullable: true })
   endDate: Date
 
   @Field(() => Boolean)
