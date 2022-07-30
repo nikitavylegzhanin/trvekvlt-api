@@ -37,7 +37,7 @@ export class BotsResolver {
     const storedBots = selectBots(store.getState())
     const storedBot = storedBots.find(propEq('id', bot.id))
 
-    if (bot.status === BotStatus.RUNNING) {
+    if (status === BotStatus.RUNNING) {
       const updatedStoredBot = await toStore({ ...bot, status })
 
       if (storedBot) {
@@ -49,7 +49,7 @@ export class BotsResolver {
       }
     }
 
-    if (bot.status === BotStatus.DISABLED && storedBot) {
+    if (status === BotStatus.DISABLED && storedBot) {
       const lastPosition = getLastPosition(storedBot)
       if (lastPosition && isLastPositionOpen(lastPosition.status)) {
         const lastTrend = getLastTrend(storedBot)
