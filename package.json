@@ -56,9 +56,5 @@
         "automerge": true
       }
     ]
-  },
-  "os": [
-    "darwin",
-    "linux"
-  ]
+  }
 }
