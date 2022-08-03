@@ -16,3 +16,9 @@ jobs:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            git pull origin dev
+            git status
+            npm i --only=prod
+            npm run build
+            pm2 restart ./build --node-args="-r dotenv/config"
