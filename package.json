@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.6.1",
-    "@tinkoff/invest-js": "^1.0.0-alpha.3",
+    "@tinkoff/invest-js": "^1.0.3",
     "apollo-server": "3.10.0",
     "ramda": "^0.28.0",
     "telegraf": "^4.7.0",
