@@ -1,6 +1,10 @@
 import store from '../store'
 import { StoredBot, addData, editData } from '../store/bots'
-import { getPositionNextStatus, getOpenPositionMessage } from './utils'
+import {
+  getPositionNextStatus,
+  getOpenPositionMessage,
+  getClosePositionMessage,
+} from './utils'
 import db, {
   Level,
   Order,
@@ -277,6 +281,10 @@ export const closePosition = async (
         },
       })
     )
+
+    const message = getClosePositionMessage(botId, closingRule, orders)
+    manager.save(manager.create(Log, { bot: { id: botId }, message }))
+    sendMessage(message)
   } catch (error) {
     const message = JSON.stringify(error)
 
