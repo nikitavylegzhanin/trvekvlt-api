@@ -1,16 +1,13 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
-  Column,
   CreateDateColumn,
+  Column,
+  ManyToOne,
 } from 'typeorm'
-import { ObjectType, Field, ID, registerEnumType } from 'type-graphql'
+import { ObjectType, Field, ID } from 'type-graphql'
 
-export enum LogType {
-  ERROR = 'ERROR',
-  STATE = 'STATE',
-}
-registerEnumType(LogType, { name: 'LogType' })
+import { Bot } from './Bot'
 
 @Entity()
 @ObjectType()
@@ -19,13 +16,12 @@ export class Log {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Field(() => LogType)
-  @Column('enum', { enum: LogType })
-  type: LogType
-
   @Field(() => String)
   @Column()
   message: string
+
+  @ManyToOne(() => Bot, (bot) => bot.log)
+  bot: Bot
 
   @Field(() => Date)
   @CreateDateColumn()

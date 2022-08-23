@@ -11,6 +11,7 @@ import { ObjectType, Field, ID, registerEnumType } from 'type-graphql'
 import { Level } from './Level'
 import { Position } from './Position'
 import { Trend } from './Trend'
+import { Log } from './Log'
 
 export enum InstrumentType {
   FUTURE = 'future',
@@ -73,4 +74,8 @@ export class Bot {
   @Field(() => [Trend], { nullable: true })
   @OneToMany(() => Trend, (trend) => trend.bot)
   trends: Trend[]
+
+  @Field(() => [Log], { nullable: true })
+  @OneToMany(() => Log, (log) => log.bot)
+  log?: Log[]
 }

@@ -1,6 +1,10 @@
 import store from '../store'
 import { StoredBot, addData, editData } from '../store/bots'
-import { getPositionNextStatus } from './utils'
+import {
+  getPositionNextStatus,
+  getOpenPositionMessage,
+  getClosePositionMessage,
+} from './utils'
 import db, {
   Level,
   Order,
@@ -9,7 +13,6 @@ import db, {
   OrderRule,
   LevelStatus,
   Log,
-  LogType,
   DEFAULT_AVAILABLE_RULES,
 } from '../db'
 import { PlacedOrder } from '../api'
@@ -85,20 +88,18 @@ export const openPosition = async (
         position,
       })
     )
+
+    const message = getOpenPositionMessage(botId, openLevel, openingRule)
+    manager.save(manager.create(Log, { bot: { id: botId }, message }))
+    sendMessage(message)
   } catch (error) {
     if (process.env.NODE_ENV !== 'test') {
-      const type = LogType.ERROR
       const message = JSON.stringify(error)
 
-      sendMessage(type, message)
+      sendMessage(message)
 
       const { manager } = db
-      manager.save(
-        manager.create(Log, {
-          type,
-          message,
-        })
-      )
+      manager.save(manager.create(Log, { bot: { id: botId }, message }))
     }
   }
 }
@@ -199,19 +200,12 @@ export const averagingPosition = async (
       })
     )
 
-    const type = LogType.ERROR
     const message = JSON.stringify(error)
 
-    sendMessage(type, message)
+    sendMessage(message)
 
     const { manager } = db
-
-    manager.save(
-      manager.create(Log, {
-        type,
-        message,
-      })
-    )
+    manager.save(manager.create(Log, { message }))
   }
 }
 
@@ -287,20 +281,17 @@ export const closePosition = async (
         },
       })
     )
+
+    const message = getClosePositionMessage(botId, closingRule, orders)
+    manager.save(manager.create(Log, { bot: { id: botId }, message }))
+    sendMessage(message)
   } catch (error) {
-    const type = LogType.ERROR
     const message = JSON.stringify(error)
 
-    sendMessage(type, message)
+    sendMessage(message)
 
     const { manager } = db
-
-    manager.save(
-      manager.create(Log, {
-        type,
-        message,
-      })
-    )
+    manager.save(manager.create(Log, { message }))
   }
 }
 

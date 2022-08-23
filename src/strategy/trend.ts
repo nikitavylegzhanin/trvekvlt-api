@@ -1,7 +1,8 @@
 import store from '../store'
 import { addData } from '../store/bots'
-import db, { Bot, Trend, TrendType } from '../db'
-import { getCorrectionTrendDirection } from './utils'
+import db, { Bot, Trend, TrendType, Log } from '../db'
+import { sendMessage } from '../telegram'
+import { getCorrectionTrendDirection, getCorrectionMessage } from './utils'
 
 export const addCorrectionTrend = async (
   botId: Bot['id'],
@@ -24,17 +25,16 @@ export const addCorrectionTrend = async (
         },
       })
     )
+
+    return
   }
 
-  if (process.env.NODE_ENV !== 'test') {
-    const { manager } = db
-    const trend = await manager.save(manager.create(Trend, { direction, type }))
+  const { manager } = db
+  const trend = await manager.save(manager.create(Trend, { direction, type }))
 
-    store.dispatch(
-      addData({
-        botId,
-        trend,
-      })
-    )
-  }
+  store.dispatch(addData({ botId, trend }))
+
+  const message = getCorrectionMessage(botId, trend)
+  manager.save(manager.create(Log, { bot: { id: botId }, message }))
+  sendMessage(message)
 }
