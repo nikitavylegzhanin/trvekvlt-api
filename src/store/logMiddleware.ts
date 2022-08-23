@@ -2,7 +2,6 @@ import { Middleware, PayloadAction } from '@reduxjs/toolkit'
 import { pick } from 'ramda'
 
 import { BotActionType, StoredBot } from './bots'
-import { LogType } from '../db'
 import { sendMessage } from '../telegram'
 
 const formatMessage = (action: PayloadAction<any>) => {
@@ -25,7 +24,7 @@ const formatMessage = (action: PayloadAction<any>) => {
 
 const logMiddleware: Middleware = (_store) => (next) => (action) => {
   if (process.env.NODE_ENV !== 'test') {
-    sendMessage(LogType.STATE, formatMessage(action))
+    sendMessage(formatMessage(action))
   }
 
   return next(action)
