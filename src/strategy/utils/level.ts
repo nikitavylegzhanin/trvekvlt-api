@@ -1,6 +1,6 @@
 import { compose, propEq, not } from 'ramda'
 
-import { Level, LevelStatus } from '../../db'
+import { Level, LevelStatus, Trend, TrendDirection } from '../../db'
 import { LEVEL_DISTANCE } from '../rules'
 
 export const isLastLevel = (levelId: Level['id'], levels: Level[]) => {
@@ -20,6 +20,22 @@ export const isLevelAroundPrice = (price: number, levelValue: number) =>
  */
 export const getNextLevel = (levels: Level[], lastPrice: number) =>
   levels.find(({ value }) => isLevelAroundPrice(lastPrice, value))
+
+export const getTargetValue = (
+  levels: Level[],
+  openLevel: Level,
+  trend: Trend
+) => {
+  const sortedLevels = [...levels].sort((a, b) => a.value - b.value)
+  const openLevelIndex = sortedLevels.findIndex(propEq('id', openLevel.id))
+
+  const targetLevel =
+    sortedLevels[
+      openLevelIndex + (trend.direction === TrendDirection.UP ? 1 : -1)
+    ]
+
+  return targetLevel?.value || 0
+}
 
 export const isLevelDisabled = compose(
   not,

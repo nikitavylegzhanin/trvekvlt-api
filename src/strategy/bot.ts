@@ -19,7 +19,7 @@ export const disableBotTillTomorrow = async (botId: Bot['id']) => {
     } catch (error) {
       const message = JSON.stringify(error)
 
-      sendMessage('ERROR', message)
+      sendMessage(message)
     }
   }
 }
