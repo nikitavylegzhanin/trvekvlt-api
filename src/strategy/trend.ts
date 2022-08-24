@@ -30,7 +30,9 @@ export const addCorrectionTrend = async (
   }
 
   const { manager } = db
-  const trend = await manager.save(manager.create(Trend, { direction, type }))
+  const trend = await manager.save(
+    manager.create(Trend, { bot: { id: botId }, direction, type })
+  )
 
   store.dispatch(addData({ botId, trend }))
 
