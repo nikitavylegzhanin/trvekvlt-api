@@ -73,12 +73,14 @@ export const getClosePositionMessage = (
     **${bot.name}** (${bot.ticker})
 
     **Close position**
-      - Rule: ${closingRule}
+      - Rule: ${'`'}${closingRule}${'`'}
       - Orders: ${orders.map(
         (order) => `
           - ${order.direction}: ${order.price} ${order.currency} x ${order.quantity}`
       )}
-      - Profit: ${profit} ${orders[0].currency} (${percent}%)
+      - Profit: ${profit.toFixed(2)} ${orders[0].currency} (${percent.toFixed(
+    2
+  )}%)
   `
 
   return message.trim()
