@@ -1,3 +1,5 @@
+import { propEq } from 'ramda'
+
 import store from '../../store'
 import { StoredBot } from '../../store/bots/reducer'
 import { getBotById } from './bot'
@@ -41,6 +43,9 @@ export const getOpenPositionMessage = (
   return message.trim()
 }
 
+const sumOrders = (sum: number, order: Order) =>
+  sum + order.price * order.quantity
+
 export const getClosePositionMessage = (
   botId: StoredBot['id'],
   closingRule: OrderRule,
@@ -48,23 +53,34 @@ export const getClosePositionMessage = (
 ) => {
   const bot = getBotById(store.getState().bots, botId)
 
+  const sellSum = orders
+    .filter(propEq('direction', OrderDirection.SELL))
+    .reduce(sumOrders, 0)
+
+  const buySum = orders
+    .filter(propEq('direction', OrderDirection.BUY))
+    .reduce(sumOrders, 0)
+
+  const profit = sellSum - buySum
+  const percent =
+    (profit /
+      (orders[orders.length - 1].direction === OrderDirection.SELL
+        ? buySum
+        : sellSum)) *
+    100
+
   const message = `
     **${bot.name}** (${bot.ticker})
 
     **Close position**
-      - Rule: ${closingRule}
+      - Rule: ${'`'}${closingRule}${'`'}
       - Orders: ${orders.map(
         (order) => `
-          - ${order.rule}: ${order.price} ${order.currency} x ${order.quantity}`
+          - ${order.direction}: ${order.price} ${order.currency} x ${order.quantity}`
       )}
-      - Profit: ${orders.reduce(
-        (sum, order) =>
-          sum +
-          order.price *
-            order.quantity *
-            (order.direction === OrderDirection.SELL ? -1 : 1),
-        0
-      )} ${orders[0].currency}
+      - Profit: ${profit.toFixed(2)} ${orders[0].currency} (${percent.toFixed(
+    2
+  )}%)
   `
 
   return message.trim()

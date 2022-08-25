@@ -47,5 +47,5 @@ bot.launch()
 
 export const sendMessage = async (message: string) =>
   bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, message, {
-    parse_mode: 'HTML',
+    parse_mode: 'Markdown',
   })
