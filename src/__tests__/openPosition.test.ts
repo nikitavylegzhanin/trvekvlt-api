@@ -1,10 +1,10 @@
-jest.mock('telegraf')
+import './mocks'
 import store from '../store'
 import { initBots, editBot } from '../store/bots'
 import { getLastPosition, getLastTrend } from '../strategy/utils'
 import { TrendDirection, PositionStatus, OrderRule } from '../db'
-import { runStartegy } from '../strategy'
-import { getTestBot, getTestLevels, getTestTrend, mockPrice } from './utils'
+import { runStrategy } from '../strategy'
+import { getTestBot, getTestLevels, getTestTrend } from './utils'
 
 const testBot = getTestBot()
 
@@ -31,7 +31,7 @@ describe('Открытие позиции в направлении тренда
     const positionA = getLastPosition(store.getState().bots[0])
     expect(positionA).toBeUndefined()
 
-    await runStartegy(testBot.id, ...mockPrice(2))
+    await runStrategy(testBot.id, 2)
 
     const positionB = getLastPosition(store.getState().bots[0])
     expect(positionB.openLevel.id).toBe(2)
@@ -43,13 +43,13 @@ describe('Открытие позиции в направлении тренда
     const positionA = getLastPosition(store.getState().bots[0])
     expect(positionA).toBeUndefined()
 
-    await runStartegy(testBot.id, ...mockPrice(3))
+    await runStrategy(testBot.id, 3)
 
     const positionB = getLastPosition(store.getState().bots[0])
     expect(positionB.openLevel.id).toBe(3)
 
     // Только одна открытая заявка
-    await runStartegy(testBot.id, ...mockPrice(3))
+    await runStrategy(testBot.id, 3)
     const { positions } = store.getState().bots[0]
     expect(positions).toHaveLength(1)
   })
@@ -58,12 +58,12 @@ describe('Открытие позиции в направлении тренда
     store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend()] }))
 
     // Верхний уровень
-    await runStartegy(testBot.id, ...mockPrice(5))
+    await runStrategy(testBot.id, 5)
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1).toBeUndefined()
 
     // Нижний уровень
-    await runStartegy(testBot.id, ...mockPrice(1))
+    await runStrategy(testBot.id, 1)
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2).toBeUndefined()
   })
@@ -79,7 +79,7 @@ describe('Открытие позиции в направлении тренда
     expect(trend.direction).toBe(TrendDirection.UP)
 
     // 1. За 3 тика до уровня BEFORE_LEVEL_3TICKS
-    await runStartegy(testBot.id, ...mockPrice(1.97))
+    await runStrategy(testBot.id, 1.97)
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.openLevel.id).toBe(2)
     expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
@@ -91,15 +91,15 @@ describe('Открытие позиции в направлении тренда
     )
 
     // 2. На уровне
-    await runStartegy(testBot.id, ...mockPrice(2))
+    await runStrategy(testBot.id, 2)
     const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition2.status).toBe(PositionStatus.OPEN_PARTIAL)
     expect(lastPosition2.availableRules).not.toContain(OrderRule.OPEN_ON_LEVEL)
     expect(lastPosition2.orders[1].rule).toBe(OrderRule.OPEN_ON_LEVEL)
 
     // 3. Правило не дублируем
-    await runStartegy(testBot.id, ...mockPrice(2.02))
-    await runStartegy(testBot.id, ...mockPrice(2))
+    await runStrategy(testBot.id, 2.02)
+    await runStrategy(testBot.id, 2)
     const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3.availableRules).not.toEqual([
       OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
@@ -108,7 +108,7 @@ describe('Открытие позиции в направлении тренда
     expect(lastPosition3.orders).toHaveLength(2)
 
     // 4. После 3 тиков от уровня - позиция полностью открыта
-    await runStartegy(testBot.id, ...mockPrice(2.03))
+    await runStrategy(testBot.id, 2.03)
     const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.status).toBe(PositionStatus.OPEN_FULL)
     expect(lastPosition4.availableRules).not.toEqual([
@@ -119,7 +119,7 @@ describe('Открытие позиции в направлении тренда
     expect(lastPosition4.orders[2].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
 
     // 5. Закроем позицию
-    await runStartegy(testBot.id, ...mockPrice(3))
+    await runStrategy(testBot.id, 3)
     const lastPosition5 = getLastPosition(store.getState().bots[0])
     expect(lastPosition5.status).toBe(PositionStatus.CLOSED)
   })
@@ -133,7 +133,7 @@ describe('Открытие позиции в направлении тренда
     store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend(true)] }))
 
     // 1. За 3 тика до уровня BEFORE_LEVEL_3TICKS
-    await runStartegy(testBot.id, ...mockPrice(2.03))
+    await runStrategy(testBot.id, 2.03)
     const lastPosition1 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.openLevel.id).toBe(2)
     expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
@@ -142,13 +142,13 @@ describe('Открытие позиции в направлении тренда
     )
 
     // 2. На уровне
-    await runStartegy(testBot.id, ...mockPrice(2))
+    await runStrategy(testBot.id, 2)
     const lastPosition2 = getLastPosition(store.getState().bots[0])
     expect(lastPosition1.status).toBe(PositionStatus.OPEN_PARTIAL)
     expect(lastPosition2.availableRules).not.toContain(OrderRule.OPEN_ON_LEVEL)
 
     // 3. После 3 тиков от уровня - позиция полностью открыта
-    await runStartegy(testBot.id, ...mockPrice(1.97))
+    await runStrategy(testBot.id, 1.97)
     const lastPosition3 = getLastPosition(store.getState().bots[0])
     expect(lastPosition3.status).toBe(PositionStatus.OPEN_FULL)
     expect(lastPosition3.availableRules).not.toEqual([
@@ -158,7 +158,7 @@ describe('Открытие позиции в направлении тренда
     ])
 
     // 4. Закроем позицию
-    await runStartegy(testBot.id, ...mockPrice(1))
+    await runStrategy(testBot.id, 1)
     const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.status).toBe(PositionStatus.CLOSED)
   })

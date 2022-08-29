@@ -1,4 +1,8 @@
 import { OpenAPIClient } from '@tinkoff/invest-js'
+import type {
+  Quotation,
+  Quotation__Output,
+} from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Quotation'
 
 import { Order, OrderDirection, OrderType } from './db'
 
@@ -9,6 +13,11 @@ const api = new OpenAPIClient({
 const sandboxApi = new OpenAPIClient({
   token: process.env.API_TOKEN_SANDBOX,
 })
+
+export const parsePrice = (value: Quotation__Output) =>
+  Number.parseFloat(
+    (parseInt(value.units) + value.nano / NANO_DIVIDER).toFixed(2)
+  )
 
 type Instrument = {
   figi: string
@@ -87,16 +96,17 @@ export const getSandboxAccountId = () =>
     })
   )
 
-type MoneyValue = {
-  currency?: string
-  units: string
-  nano: number
-}
+const NANO_DIVIDER = 1000000000
 
-export const parsePrice = (value: MoneyValue) =>
-  Number.parseFloat(
-    (parseInt(value.units) + value.nano / 1000000000).toFixed(2)
-  )
+export const numberToQuotation = (value: number): Quotation => {
+  const units = Math.floor(value)
+  const nano = Math.floor((value - units) * NANO_DIVIDER)
+
+  return {
+    units,
+    nano,
+  }
+}
 
 export type PlacedOrder = {
   price: Order['price']
@@ -115,11 +125,19 @@ export const placeOrder = (
   quantity: number,
   direction: 1 | 2,
   accountId: string,
+  price: number,
   orderType: 1 | 2 = 2
 ) =>
   new Promise<PlacedOrder>((resolve, reject) =>
     sandboxApi.sandbox.postSandboxOrder(
-      { figi, quantity, direction, accountId, orderType },
+      {
+        figi,
+        quantity,
+        direction,
+        accountId,
+        orderType,
+        price: numberToQuotation(price),
+      },
       (error, res) => {
         if (error) return reject(error)
 

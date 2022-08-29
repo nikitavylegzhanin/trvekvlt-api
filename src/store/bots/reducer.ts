@@ -19,6 +19,8 @@ export type StoredBot = Bot & {
   endDate: Date
   isShortEnable: boolean
   tickValue: number
+  isProcessing: boolean
+  lastPrice?: number
 }
 
 const reducer = createReducer<StoredBot[]>([], (builder) =>

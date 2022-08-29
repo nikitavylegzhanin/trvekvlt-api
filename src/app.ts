@@ -1,18 +1,13 @@
 import { Raw } from 'typeorm'
-import { not, isNil, pipe, reduce, filter, uniq, without } from 'ramda'
+import { not, isNil, pipe, reduce, filter, uniq, without, propEq } from 'ramda'
 
-import db from './db'
-import {
-  getInstrument,
-  getTradingSchedule,
-  marketDataStream,
-  placeOrder,
-} from './api'
+import db, { BotStatus } from './db'
+import { getInstrument, getTradingSchedule, marketDataStream } from './api'
 import store from './store'
-import { StoredBot, initBots, selectBots } from './store/bots'
+import { StoredBot, initBots, selectBots, editBot } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
-import { getBotById, getLastTrend, getLastPrice } from './strategy/utils'
-import { runStartegy } from './strategy'
+import { getLastTrend, getLastPrice } from './strategy/utils'
+import { runStrategy } from './strategy'
 
 const getRelatedLevels = pipe(
   reduce<Position, Level[]>(
@@ -65,16 +60,26 @@ export const toStore = async (bot: Bot): Promise<StoredBot> => {
     tickValue: instrument.tickValue,
     startDate: schedule.startDate,
     endDate: schedule.endDate,
+    isProcessing: false,
   }
 }
 
-export const getBots = async () => {
+export const init = async () => {
   const bots = await db.manager.find(Bot, {
     relations: ['levels'],
   })
   const storedBots = await Promise.all(bots.map(toStore))
 
   store.dispatch(initBots(storedBots))
+
+  marketDataStream.write({
+    subscribeOrderBookRequest: {
+      instruments: storedBots
+        .filter(propEq('status', BotStatus.RUNNING))
+        .map((bot) => ({ figi: bot.figi, depth: 1 })),
+      subscriptionAction: 'SUBSCRIPTION_ACTION_SUBSCRIBE',
+    },
+  })
 
   return storedBots
 }
@@ -91,44 +96,23 @@ const parseOrder = (data: any): Order => ({
   quantity: Number.parseInt(data?.quantity),
 })
 
-export const run = async (bot: StoredBot) => {
-  const placeOrderByDirection = (direction: 1 | 2, quantity = 1) =>
-    placeOrder(bot.figi, quantity, direction, bot.accountId)
-
-  marketDataStream.on('error', console.error)
-
-  let bidPrice = 0,
-    askPrice = 0,
-    isTransaction = false
-
-  marketDataStream.on('data', async (data) => {
-    if (!data?.payload || isTransaction) return
-
+export const run = async () => {
+  marketDataStream.on('data', (data) => {
     if (data.payload === 'orderbook') {
-      const lastBid = parseOrder(data?.orderbook?.bids[0])
-      const lastAsk = parseOrder(data?.orderbook?.asks[0])
+      const bots = selectBots(store.getState())
+      const { figi, bids, asks } = data[data.payload]
 
-      // обрабатываем торговую логику при изменении цены
-      if (bidPrice !== lastBid.price || askPrice !== lastAsk.price) {
-        bidPrice = lastBid.price
-        askPrice = lastAsk.price
-        isTransaction = true
+      bots.filter(propEq('figi', figi)).forEach((bot) => {
+        const lastPrice = getLastPrice(
+          parseOrder(bids[0]).price,
+          parseOrder(asks[0]).price,
+          getLastTrend(bot)
+        )
 
-        const bots = selectBots(store.getState())
-        const lastTrend = getLastTrend(getBotById(bots, bot.id))
-        const lastPrice = getLastPrice(askPrice, bidPrice, lastTrend)
-
-        await runStartegy(bot.id, lastPrice, placeOrderByDirection)
-
-        return (isTransaction = false)
-      }
+        runStrategy(bot.id, lastPrice).then(() =>
+          store.dispatch(editBot({ id: bot.id, isProcessing: false }))
+        )
+      })
     }
-  })
-
-  marketDataStream.write({
-    subscribeOrderBookRequest: {
-      instruments: [{ figi: bot.figi, depth: 1 }],
-      subscriptionAction: 'SUBSCRIPTION_ACTION_SUBSCRIBE',
-    },
   })
 }

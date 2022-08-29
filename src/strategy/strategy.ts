@@ -15,49 +15,33 @@ import {
   isAbleToCloseBySlt3Ticks,
 } from './rules'
 import { addCorrectionTrend } from './trend'
+// prettier-ignore
 import {
-  getBotById,
-  isBotDisabled,
-  getLastPosition,
-  getLastTrend,
-  isLevelDisabled,
-  getPriceDistanceToPrevLevel,
-  getPositionProfit,
-  isLastPositionClosed,
-  isLastPositionOpen,
-  isLastPositionOpenPartially,
-  getLastClosedPosition,
-  isCorrectionTrend,
-  isLastLevel,
-  getNextLevel,
-  getOpenOperation,
-  getCloseOperation,
-  isOpeningRuleAvailable,
-  isDowntrend,
-  getPositionValue,
-  getPositionAvgPrice,
-  isClosedBySL,
+  getBotById, isBotDisabled, getLastPosition, getLastTrend, isLevelDisabled,
+  getPriceDistanceToPrevLevel, getPositionProfit, isLastPositionClosed,
+  isLastPositionOpen, isLastPositionOpenPartially, getLastClosedPosition,
+  isCorrectionTrend, isLastLevel, getNextLevel, getOpenOperation,
+  isOpeningRuleAvailable, isDowntrend, getPositionAvgPrice, isClosedBySL
 } from './utils'
-import { PlacedOrder } from '../api'
 import { Bot } from '../db'
 import { disableBotTillTomorrow } from './bot'
 
-type PlaceOrderByDirection = (
-  direction: 1 | 2,
-  quantity?: number
-) => Promise<PlacedOrder>
-
-export const runStartegy = async (
-  botId: Bot['id'],
-  lastPrice: number,
-  placeOrder: PlaceOrderByDirection
-) => {
+export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
   const state = store.getState()
   const bots = selectBots(state)
   const bot = getBotById(bots, botId)
 
-  // пропускаем торговлю если движок выключен
-  if (isBotDisabled(bot)) return
+  // пропускаем торговлю если движок выключен или в процессе обработки
+  if (isBotDisabled(bot) || bot.isProcessing) return
+
+  // начинаем процесс обработки торговой стратегии
+  store.dispatch(
+    editBot({
+      id: bot.id,
+      isProcessing: process.env.NODE_ENV !== 'test',
+      lastPrice,
+    })
+  )
 
   const date = new Date()
   const lastPosition = getLastPosition(bot)
@@ -66,10 +50,7 @@ export const runStartegy = async (
   if (!isTradingInterval(date, bot.startDate, bot.endDate)) {
     // закрываем позицию по окночании торговой фазы
     if (isLastPositionOpen(lastPosition?.status)) {
-      const operation = getCloseOperation(lastTrend)
-
       await closePosition(
-        () => placeOrder(operation, getPositionValue(lastPosition)),
         bot.id,
         lastPosition,
         OrderRule.CLOSE_BY_MARKET_PHASE_END
@@ -133,21 +114,11 @@ export const runStartegy = async (
       if (isOpeningRuleAvailable(openingRule, lastPosition)) {
         // усредняем если позиция не закрыта
         if (isOpenPartially) {
-          return averagingPosition(
-            () => placeOrder(operation),
-            bot.id,
-            lastPosition,
-            openingRule
-          )
+          return averagingPosition(bot.id, lastPosition, openingRule)
         }
 
         // иначе открываем новую
-        await openPosition(
-          () => placeOrder(operation),
-          bot.id,
-          nextLevel,
-          openingRule
-        )
+        await openPosition(bot.id, nextLevel, openingRule)
 
         return
       }
@@ -156,13 +127,8 @@ export const runStartegy = async (
 
   // закрываем открытую позицию по tp, slt, sl
   if (isLastPositionOpen(lastPosition?.status)) {
-    const operation = getCloseOperation(lastTrend)
-    const placeOrderFn = () =>
-      placeOrder(operation, getPositionValue(lastPosition))
-
     if (isTp(nextLevel, lastPosition.openLevel)) {
       await closePosition(
-        placeOrderFn,
         bot.id,
         lastPosition,
         OrderRule.CLOSE_BY_TP,
@@ -175,7 +141,6 @@ export const runStartegy = async (
 
     if (isSlt50Percent(lastPosition.availableRules, distance)) {
       await closePosition(
-        placeOrderFn,
         bot.id,
         lastPosition,
         OrderRule.CLOSE_BY_SLT_50PERCENT,
@@ -195,7 +160,6 @@ export const runStartegy = async (
       )
     ) {
       await closePosition(
-        placeOrderFn,
         bot.id,
         lastPosition,
         OrderRule.CLOSE_BY_SLT_3TICKS,
@@ -213,12 +177,7 @@ export const runStartegy = async (
     )
 
     if (isSl(lastPosition.availableRules, positionProfit, distance)) {
-      await closePosition(
-        placeOrderFn,
-        bot.id,
-        lastPosition,
-        OrderRule.CLOSE_BY_SL
-      )
+      await closePosition(bot.id, lastPosition, OrderRule.CLOSE_BY_SL)
 
       // стоп на коррекции → выключаем движок DISABLED_TILL_TOMORROW
       if (isCorrectionTrend(lastTrend)) {
