@@ -19,6 +19,12 @@ class StoredBot extends Bot {
 
   @Field(() => Float)
   tickValue: number
+
+  @Field(() => Boolean)
+  isProcessing: boolean
+
+  @Field(() => Float, { nullable: true })
+  lastPrice?: number
 }
 
 @Resolver()

@@ -4,6 +4,10 @@ import {
   getPositionNextStatus,
   getOpenPositionMessage,
   getClosePositionMessage,
+  getBotById,
+  getLastTrend,
+  getOpenOperation,
+  getPositionValue,
 } from './utils'
 import db, {
   Level,
@@ -15,21 +19,30 @@ import db, {
   Log,
   DEFAULT_AVAILABLE_RULES,
 } from '../db'
-import { PlacedOrder } from '../api'
+import { placeOrder } from '../api'
 import { sendMessage } from '../telegram'
 
 /**
  * Открытие новой позиции
  */
 export const openPosition = async (
-  placeOrder: () => Promise<PlacedOrder>,
   botId: StoredBot['id'],
   openLevel: Level,
   openingRule: OrderRule
 ) => {
   try {
+    const bot = getBotById(store.getState().bots, botId)
+    const lastTrend = getLastTrend(bot)
+    const operation = getOpenOperation(lastTrend)
+
     // отправляем заявку
-    const placedOrder = await placeOrder()
+    const placedOrder = await placeOrder(
+      bot.figi,
+      1,
+      operation,
+      bot.accountId,
+      bot.lastPrice
+    )
 
     const availableRules = DEFAULT_AVAILABLE_RULES.filter(
       (rule) => rule !== openingRule
@@ -108,7 +121,6 @@ export const openPosition = async (
  * Усреденение позиции
  */
 export const averagingPosition = async (
-  placeOrder: () => Promise<PlacedOrder>,
   botId: StoredBot['id'],
   position: Position,
   averagingRule: OrderRule
@@ -139,8 +151,18 @@ export const averagingPosition = async (
   }
 
   try {
+    const bot = getBotById(store.getState().bots, botId)
+    const lastTrend = getLastTrend(bot)
+    const operation = getOpenOperation(lastTrend)
+
     // отправляем заявку
-    const placedOrder = await placeOrder()
+    const placedOrder = await placeOrder(
+      bot.figi,
+      1,
+      operation,
+      bot.accountId,
+      bot.lastPrice
+    )
 
     // обновляем позицию в стейте
     store.dispatch(
@@ -210,7 +232,6 @@ export const averagingPosition = async (
 }
 
 export const closePosition = async (
-  placeOrder: () => Promise<PlacedOrder>,
   botId: StoredBot['id'],
   position: Position,
   closingRule: OrderRule,
@@ -218,8 +239,18 @@ export const closePosition = async (
   closedLevel?: Level
 ) => {
   try {
+    const bot = getBotById(store.getState().bots, botId)
+    const lastTrend = getLastTrend(bot)
+    const operation = getOpenOperation(lastTrend)
+
     // отправляем заявку
-    const placedOrder = await placeOrder()
+    const placedOrder = await placeOrder(
+      bot.figi,
+      getPositionValue(position),
+      operation,
+      bot.accountId,
+      bot.lastPrice
+    )
 
     // обновляем стейт
     store.dispatch(
