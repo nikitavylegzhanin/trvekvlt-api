@@ -1,8 +1,9 @@
 import { OpenAPIClient } from '@tinkoff/invest-js'
-import type {
+import {
   Quotation,
   Quotation__Output,
 } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Quotation'
+import { Share } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Share'
 
 import { Order, OrderDirection, OrderType } from './db'
 
@@ -78,6 +79,14 @@ export const getInstrumentByFigi = (figi: string) =>
   )
 
 export const marketDataStream = sandboxApi.marketDataStream.marketDataStream()
+
+export const unsubscribeFromOrderBook = (figi: Share['figi']) =>
+  marketDataStream.write({
+    subscribeOrderBookRequest: {
+      instruments: [{ figi }],
+      subscriptionAction: 'SUBSCRIPTION_ACTION_UNSUBSCRIBE',
+    },
+  })
 
 export const getSandboxAccountId = () =>
   new Promise<string>((resolve, reject) =>

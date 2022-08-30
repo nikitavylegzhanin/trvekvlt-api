@@ -1,5 +1,5 @@
 import store from '../store'
-import { StoredBot, addData, editData, editBot } from '../store/bots'
+import { StoredBot, addData, editData } from '../store/bots'
 import {
   getPositionNextStatus,
   getOpenPositionMessage,
@@ -8,7 +8,6 @@ import {
   getLastTrend,
   getOpenOperation,
   getPositionValue,
-  getDisableBotTillTomorrowMessage,
 } from './utils'
 import db, {
   Level,
@@ -19,8 +18,8 @@ import db, {
   LevelStatus,
   Log,
   DEFAULT_AVAILABLE_RULES,
-  BotStatus,
 } from '../db'
+import { disableBotTillTomorrow } from './bot'
 import { placeOrder } from '../api'
 import { sendMessage } from '../telegram'
 
@@ -108,16 +107,7 @@ export const openPosition = async (
     manager.save(manager.create(Log, { bot: { id: botId }, message }))
     sendMessage(message)
   } catch (error) {
-    if (process.env.NODE_ENV !== 'test') {
-      store.dispatch(
-        editBot({ id: botId, status: BotStatus.DISABLED_DURING_SESSION })
-      )
-
-      const message = getDisableBotTillTomorrowMessage(botId, error)
-
-      sendMessage(message)
-      db.manager.save(db.manager.create(Log, { bot: { id: botId }, message }))
-    }
+    await disableBotTillTomorrow(botId, error)
   }
 }
 
@@ -225,14 +215,8 @@ export const averagingPosition = async (
         position,
       })
     )
-    store.dispatch(
-      editBot({ id: botId, status: BotStatus.DISABLED_DURING_SESSION })
-    )
 
-    const message = getDisableBotTillTomorrowMessage(botId, error)
-
-    sendMessage(message)
-    db.manager.save(db.manager.create(Log, { bot: { id: botId }, message }))
+    await disableBotTillTomorrow(botId, error)
   }
 }
 
@@ -322,14 +306,7 @@ export const closePosition = async (
     manager.save(manager.create(Log, { bot: { id: botId }, message }))
     sendMessage(message)
   } catch (error) {
-    store.dispatch(
-      editBot({ id: botId, status: BotStatus.DISABLED_DURING_SESSION })
-    )
-
-    const message = getDisableBotTillTomorrowMessage(botId, error)
-
-    sendMessage(message)
-    db.manager.save(db.manager.create(Log, { bot: { id: botId }, message }))
+    await disableBotTillTomorrow(botId, error)
   }
 }
 
@@ -360,13 +337,7 @@ export const updatePositionAvaiableRules = async (
         position,
       })
     )
-    store.dispatch(
-      editBot({ id: botId, status: BotStatus.DISABLED_DURING_SESSION })
-    )
 
-    const message = getDisableBotTillTomorrowMessage(botId, error)
-
-    sendMessage(message)
-    db.manager.save(db.manager.create(Log, { bot: { id: botId }, message }))
+    await disableBotTillTomorrow(botId, error)
   }
 }
