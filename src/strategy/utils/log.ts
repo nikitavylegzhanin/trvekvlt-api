@@ -103,13 +103,18 @@ export const getCorrectionMessage = (botId: StoredBot['id'], trend: Trend) => {
   return message.trim()
 }
 
-export const getDisableBotTillTomorrowMessage = (botId: StoredBot['id']) => {
+export const getDisableBotTillTomorrowMessage = (
+  botId: StoredBot['id'],
+  error?: Error
+) => {
   const bot = getBotById(store.getState().bots, botId)
 
   const message = `
     **${bot.name}** (${bot.ticker})
 
     The bot is disabled until the next trading session
+
+    ${error ? JSON.stringify(error) : ''}
   `
 
   return message.trim()
