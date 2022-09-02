@@ -80,6 +80,14 @@ export const getInstrumentByFigi = (figi: string) =>
 
 export const marketDataStream = sandboxApi.marketDataStream.marketDataStream()
 
+export const subscribeToOrderBook = (figi: Share['figi']) =>
+  marketDataStream.write({
+    subscribeOrderBookRequest: {
+      instruments: [{ figi, depth: 1 }],
+      subscriptionAction: 'SUBSCRIPTION_ACTION_SUBSCRIBE',
+    },
+  })
+
 export const unsubscribeFromOrderBook = (figi: Share['figi']) =>
   marketDataStream.write({
     subscribeOrderBookRequest: {

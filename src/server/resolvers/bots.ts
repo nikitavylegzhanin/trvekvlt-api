@@ -4,16 +4,14 @@ import { propEq } from 'ramda'
 import db, { Bot, BotStatus, OrderRule } from '../../db'
 import store from '../../store'
 import { selectBots, editBot, addBot } from '../../store/bots'
-import { toStore, run } from '../../app'
+import { toStore } from '../../app'
 import {
   getLastPosition,
   isLastPositionOpen,
-  getLastTrend,
-  getCloseOperation,
-  getPositionValue,
+  getUnsubscribeFigi,
 } from '../../strategy/utils'
 import { closePosition } from '../../strategy/position'
-import { placeOrder } from '../../api'
+import { subscribeToOrderBook, unsubscribeFromOrderBook } from '../../api'
 
 @Resolver()
 export class BotsResolver {
@@ -44,31 +42,35 @@ export class BotsResolver {
         store.dispatch(editBot(updatedStoredBot))
       } else {
         store.dispatch(addBot(updatedStoredBot))
+      }
 
-        await run(updatedStoredBot)
+      if (
+        !storedBots.filter(
+          (bot) =>
+            bot.figi === updatedStoredBot.figi &&
+            bot.status === BotStatus.RUNNING
+        ).length
+      ) {
+        subscribeToOrderBook(updatedStoredBot.figi)
       }
     }
 
     if (status === BotStatus.DISABLED && storedBot) {
       const lastPosition = getLastPosition(storedBot)
       if (lastPosition && isLastPositionOpen(lastPosition.status)) {
-        const lastTrend = getLastTrend(storedBot)
-
         await closePosition(
-          () =>
-            placeOrder(
-              storedBot.figi,
-              getPositionValue(lastPosition),
-              getCloseOperation(lastTrend),
-              storedBot.accountId
-            ),
           storedBot.id,
           lastPosition,
           OrderRule.CLOSE_MANUALLY
         )
       }
 
-      store.dispatch(editBot({ ...storedBot, status }))
+      store.dispatch(editBot({ id: botId, status }))
+
+      const unsubscribeFigi = getUnsubscribeFigi(storedBots, botId)
+      if (unsubscribeFigi) {
+        unsubscribeFromOrderBook(unsubscribeFigi)
+      }
     }
 
     const { affected } = await db.manager.update(Bot, botId, { status })
