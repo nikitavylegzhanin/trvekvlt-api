@@ -19,6 +19,7 @@ import db, {
   Log,
   DEFAULT_AVAILABLE_RULES,
 } from '../db'
+import { disableBotTillTomorrow } from './bot'
 import { placeOrder } from '../api'
 import { sendMessage } from '../telegram'
 
@@ -106,14 +107,7 @@ export const openPosition = async (
     manager.save(manager.create(Log, { bot: { id: botId }, message }))
     sendMessage(message)
   } catch (error) {
-    if (process.env.NODE_ENV !== 'test') {
-      const message = JSON.stringify(error)
-
-      sendMessage(message)
-
-      const { manager } = db
-      manager.save(manager.create(Log, { bot: { id: botId }, message }))
-    }
+    await disableBotTillTomorrow(botId, error)
   }
 }
 
@@ -222,12 +216,7 @@ export const averagingPosition = async (
       })
     )
 
-    const message = JSON.stringify(error)
-
-    sendMessage(message)
-
-    const { manager } = db
-    manager.save(manager.create(Log, { message }))
+    await disableBotTillTomorrow(botId, error)
   }
 }
 
@@ -317,12 +306,7 @@ export const closePosition = async (
     manager.save(manager.create(Log, { bot: { id: botId }, message }))
     sendMessage(message)
   } catch (error) {
-    const message = JSON.stringify(error)
-
-    sendMessage(message)
-
-    const { manager } = db
-    manager.save(manager.create(Log, { message }))
+    await disableBotTillTomorrow(botId, error)
   }
 }
 
@@ -353,5 +337,7 @@ export const updatePositionAvaiableRules = async (
         position,
       })
     )
+
+    await disableBotTillTomorrow(botId, error)
   }
 }
