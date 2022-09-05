@@ -96,6 +96,15 @@ export const unsubscribeFromOrderBook = (figi: Share['figi']) =>
     },
   })
 
+export const addSandboxAccount = () =>
+  new Promise<string>((resolve, reject) =>
+    sandboxApi.sandbox.openSandboxAccount({}, (error, { accountId }) => {
+      if (error) return reject(error)
+
+      return resolve(accountId)
+    })
+  )
+
 export const getSandboxAccountId = () =>
   new Promise<string>((resolve, reject) =>
     sandboxApi.sandbox.getSandboxAccounts({}, (error, { accounts }) => {
