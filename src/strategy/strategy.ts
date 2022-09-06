@@ -32,16 +32,11 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
   const bot = getBotById(bots, botId)
 
   // пропускаем торговлю если движок выключен или в процессе обработки
-  if (isBotDisabled(bot) || bot.isProcessing) return
+  if (isBotDisabled(bot) || bot.isProcessing)
+    return store.dispatch(editBot({ id: bot.id, lastPrice }))
 
   // начинаем процесс обработки торговой стратегии
-  store.dispatch(
-    editBot({
-      id: bot.id,
-      isProcessing: process.env.NODE_ENV !== 'test',
-      lastPrice,
-    })
-  )
+  store.dispatch(editBot({ id: bot.id, isProcessing: true, lastPrice }))
 
   const date = new Date()
   const lastPosition = getLastPosition(bot)
@@ -57,13 +52,10 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
       )
     }
 
-    // сбрасываем данные по позициям при закрытии торговой фазы
-    if (!!lastPosition) {
-      store.dispatch(editBot({ id: bot.id, positions: [] }))
-    }
-
-    // пропускаем торговлю вне торговой фазы
-    return
+    // сбрасываем данные по позициям при закрытии торговой фазы и пропускаем торговлю
+    return store.dispatch(
+      editBot({ id: bot.id, isProcessing: false, positions: [] })
+    )
   }
 
   if (!lastTrend) {
@@ -114,13 +106,17 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
       if (isOpeningRuleAvailable(openingRule, lastPosition)) {
         // усредняем если позиция не закрыта
         if (isOpenPartially) {
-          return averagingPosition(bot.id, lastPosition, openingRule)
+          await averagingPosition(bot.id, lastPosition, openingRule)
+
+          // процесс выполнен
+          return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
         }
 
         // иначе открываем новую
         await openPosition(bot.id, nextLevel, openingRule)
 
-        return
+        // процесс выполнен
+        return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
       }
     }
   }
@@ -136,7 +132,8 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
         nextLevel
       )
 
-      return
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
     }
 
     if (isSlt50Percent(lastPosition.availableRules, distance)) {
@@ -147,7 +144,8 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
         lastPosition.openLevel
       )
 
-      return
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
     }
 
     // slt 3ticks
@@ -166,7 +164,8 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
         lastPosition.openLevel
       )
 
-      return
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
     }
 
     // sl
@@ -183,7 +182,8 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
       if (isCorrectionTrend(lastTrend)) {
         await disableBotTillTomorrow(bot.id)
 
-        return
+        // процесс выполнен
+        return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
       }
 
       // 2 стопа подряд → коррекция
@@ -197,5 +197,5 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
   }
 
   // нет действий по текущей цене
-  return
+  return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
 }
