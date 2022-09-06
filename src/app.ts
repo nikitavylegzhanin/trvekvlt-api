@@ -6,6 +6,7 @@ import { getInstrument, getTradingSchedule, marketDataStream } from './api'
 import store from './store'
 import { StoredBot, initBots, selectBots } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
+import { sendMessage } from './telegram'
 import { getLastTrend, getLastPrice } from './strategy/utils'
 import { runStrategy } from './strategy'
 
@@ -113,4 +114,16 @@ export const run = async () => {
       })
     }
   })
+}
+
+export const sendError = (error: Error) => {
+  const message = `
+    **App error**
+
+    ${'`'}${'`'}${'`'}
+      ${JSON.stringify(error)}
+    ${'`'}${'`'}${'`'}
+  `.trim()
+
+  return sendMessage(message)
 }
