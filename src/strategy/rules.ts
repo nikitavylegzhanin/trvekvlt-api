@@ -10,7 +10,7 @@ enum Distance {
   BAD = -0.5,
 }
 
-export const LEVEL_DISTANCE = 0.03
+export const LEVEL_DISTANCE_TICKS = 3
 
 const isAbleToCloseBySlt50 = (availableRules: Position['availableRules']) =>
   availableRules.includes(OrderRule.CLOSE_BY_SLT_50PERCENT)
@@ -106,13 +106,14 @@ export const isSlt3Ticks = (
   availableRules: Position['availableRules'],
   positionAvgPrice: number,
   lastPrice: number,
+  tickValue: number,
   isShort: boolean
 ) => {
   if (!availableRules.includes(OrderRule.CLOSE_BY_SLT_3TICKS)) return false
 
   return isShort
-    ? lastPrice >= positionAvgPrice - LEVEL_DISTANCE
-    : Math.abs(positionAvgPrice - lastPrice) <= LEVEL_DISTANCE
+    ? lastPrice >= positionAvgPrice - LEVEL_DISTANCE_TICKS * tickValue
+    : Math.abs(positionAvgPrice - lastPrice) <= LEVEL_DISTANCE_TICKS * tickValue
 }
 
 export const isSl = (
@@ -130,6 +131,7 @@ export const isSl = (
 export const getNextOpeningRule = (
   price: number,
   levelValue: number,
+  tickValue: number,
   operation: 1 | 2
 ) => {
   const isLong = operation === 1
@@ -138,13 +140,13 @@ export const getNextOpeningRule = (
     return OrderRule.OPEN_ON_LEVEL
   }
 
-  if (price === levelValue - LEVEL_DISTANCE) {
+  if (price === levelValue - LEVEL_DISTANCE_TICKS * tickValue) {
     return isLong
       ? OrderRule.OPEN_BEFORE_LEVEL_3TICKS
       : OrderRule.OPEN_AFTER_LEVEL_3TICKS
   }
 
-  if (price === levelValue + LEVEL_DISTANCE) {
+  if (price === levelValue + LEVEL_DISTANCE_TICKS * tickValue) {
     return isLong
       ? OrderRule.OPEN_AFTER_LEVEL_3TICKS
       : OrderRule.OPEN_BEFORE_LEVEL_3TICKS

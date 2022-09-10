@@ -36,7 +36,8 @@ export const getTestTrend = (
 export const getTestBot = (
   levelValues?: number[],
   isDowntrend?: boolean,
-  isCorrection?: boolean
+  isCorrection?: boolean,
+  tickValue = 0.01
 ): StoredBot => ({
   id: 0,
   status: BotStatus.RUNNING,
@@ -53,6 +54,6 @@ export const getTestBot = (
   figi: 't3st',
   instrumentType: InstrumentType.SHARE,
   isShortEnable: true,
-  tickValue: 0.01,
+  tickValue,
   isProcessing: false,
 })

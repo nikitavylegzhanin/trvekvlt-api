@@ -62,7 +62,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
     throw new Error('Last trend is undefined')
   }
 
-  const { levels } = bot
+  const { levels, tickValue } = bot
   const isShort = isDowntrend(lastTrend)
   const positionAvgPrice = lastPosition
     ? getPositionAvgPrice(lastPosition)
@@ -70,6 +70,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
   const distance = getPriceDistanceToPrevLevel(
     levels,
     lastPrice,
+    tickValue,
     isShort,
     lastPosition?.openLevel,
     positionAvgPrice,
@@ -81,7 +82,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
     await manageClosingRules(bot.id, distance, lastPosition)
   }
 
-  const nextLevel = getNextLevel(levels, lastPrice)
+  const nextLevel = getNextLevel(levels, lastPrice, tickValue)
   const isClosed = isLastPositionClosed(lastPosition)
   const isOpenPartially = isLastPositionOpenPartially(lastPosition)
 
@@ -100,6 +101,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
       const openingRule = getNextOpeningRule(
         lastPrice,
         nextLevel.value,
+        tickValue,
         operation
       )
 
@@ -154,6 +156,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
         lastPosition.availableRules,
         positionAvgPrice,
         lastPrice,
+        tickValue,
         isShort
       )
     ) {
