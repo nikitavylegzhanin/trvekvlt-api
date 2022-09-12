@@ -4,8 +4,9 @@ import { not, isNil, pipe, reduce, filter, uniq, without, propEq } from 'ramda'
 import db, { BotStatus } from './db'
 import { getInstrument, getTradingSchedule, marketDataStream } from './api'
 import store from './store'
-import { StoredBot, initBots, selectBots, editBot } from './store/bots'
+import { StoredBot, initBots, selectBots } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
+import { sendMessage } from './telegram'
 import { getLastTrend, getLastPrice } from './strategy/utils'
 import { runStrategy } from './strategy'
 
@@ -109,10 +110,20 @@ export const run = async () => {
           getLastTrend(bot)
         )
 
-        runStrategy(bot.id, lastPrice).then(() =>
-          store.dispatch(editBot({ id: bot.id, isProcessing: false }))
-        )
+        runStrategy(bot.id, lastPrice)
       })
     }
   })
+}
+
+export const sendError = (error: Error) => {
+  const message = `
+    **App error**
+
+    ${'`'}${'`'}${'`'}
+      ${JSON.stringify(error)}
+    ${'`'}${'`'}${'`'}
+  `.trim()
+
+  return sendMessage(message)
 }

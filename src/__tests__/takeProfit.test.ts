@@ -6,7 +6,7 @@ import { OrderRule, PositionStatus, LevelStatus } from '../db'
 import { runStrategy } from '../strategy'
 import { getTestBot, getTestLevels, getTestTrend } from './utils'
 
-const testBot = getTestBot()
+const testBot = getTestBot([1, 2, 3, 4])
 
 describe('Take profit', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
@@ -17,7 +17,7 @@ describe('Take profit', () => {
         id: testBot.id,
         status: testBot.status,
         positions: [],
-        levels: getTestLevels([1, 2, 3, 4]),
+        lastPrice: undefined,
       })
     )
   })
@@ -34,10 +34,12 @@ describe('Take profit', () => {
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
 
-    // 2. Цена изменяется на 0.5 пунктов → держим позицию
+    // 2. Цена изменяется на 0.5 пунктов → усредняем AFTER_LEVEL_3TICKS
     await runStrategy(testBot.id, 2.5)
     const position2 = getLastPosition(store.getState().bots[0])
-    expect(position2.openLevel.id).toBe(2)
+    expect(position2.id).toBe(position1.id)
+    expect(position2.status).toBe(PositionStatus.OPEN_PARTIAL)
+    expect(position2.orders[1].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
 
     // 3. Цена достигает следующего уровня → закрываем позицию
     await runStrategy(testBot.id, 3)
@@ -45,7 +47,7 @@ describe('Take profit', () => {
     expect(position3.openLevel.id).toBe(2)
     expect(position3.closedLevel.id).toBe(3)
     expect(position3.status).toBe(PositionStatus.CLOSED)
-    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_TP)
+    expect(position3.orders[2].rule).toBe(OrderRule.CLOSE_BY_TP)
 
     // 4. Цена держится на закрытом уровне → закрытый уровень выключен
     await runStrategy(testBot.id, 3.01)
@@ -141,6 +143,7 @@ describe('Take profit', () => {
     await runStrategy(testBot.id, 23.21)
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
+    expect(position1.orders[0].rule).toBe(OrderRule.OPEN_ON_LEVEL)
     expect(position1.availableRules).toEqual(
       expect.arrayContaining([
         OrderRule.CLOSE_BY_SL,
@@ -150,9 +153,11 @@ describe('Take profit', () => {
     )
 
     // 2. Цена поднимается на 70% (+0.21) от уровня открытия → доступно закрытие по правилу SLT_50PERCENT
+    // + усредняем по правилу AFTER_LEVEL_3TICKS на проскоке с 23.21 до 23.42
     await runStrategy(testBot.id, 23.42)
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(2)
+    expect(position2.orders[1].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
     expect(position2.availableRules).toEqual(
       expect.arrayContaining([
         OrderRule.CLOSE_BY_SL,
@@ -168,7 +173,7 @@ describe('Take profit', () => {
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(2)
     expect(position3.status).toBe(PositionStatus.CLOSED)
-    expect(position3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_50PERCENT)
+    expect(position3.orders[2].rule).toBe(OrderRule.CLOSE_BY_SLT_50PERCENT)
 
     const closedLevel3 = store
       .getState()
@@ -193,10 +198,20 @@ describe('Take profit', () => {
     //       ╱╲       | 4
     // 2 ╱╲-╱--╲----- | 1, 2, 3, 5
 
-    // 1. Открываем позицию в лонг на уровне 2
+    store.dispatch(
+      editBot({
+        id: testBot.id,
+        levels: getTestLevels([1, 2, 3, 4]),
+      })
+    )
+
+    // 1. Собираем позицию в лонг на уровне 2 и 2.03
     await runStrategy(testBot.id, 2)
+    await runStrategy(testBot.id, 2.03)
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(2)
+    expect(position1.orders[0].rule).toBe(OrderRule.OPEN_ON_LEVEL)
+    expect(position1.orders[1].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
     expect(position1.availableRules).toEqual(
       expect.arrayContaining([
         OrderRule.CLOSE_BY_SL,
@@ -205,7 +220,7 @@ describe('Take profit', () => {
       ])
     )
 
-    // 2. Цена поднимается на 40% от уровня открытия → без изменений
+    // 2. Цена поднимается на 40% от уровня открытия → без изменений по правилам
     await runStrategy(testBot.id, 2.4)
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(2)
@@ -223,8 +238,8 @@ describe('Take profit', () => {
     expect(position3.id).toBe(position2.id)
     expect(position3.status).toBe(PositionStatus.OPEN_PARTIAL)
 
-    // 4. Цена поднимается на 50% от уровня открытия → добавляем правило закрытия по SLT_3TICKS
-    await runStrategy(testBot.id, 2.5)
+    // 4. Цена поднимается на 50% от средней заявок ON_LEVEL и AFTER_LEVEL → добавляем правило закрытия по SLT_3TICKS
+    await runStrategy(testBot.id, 2.6)
     const position4 = getLastPosition(store.getState().bots[0])
     expect(position4.openLevel.id).toBe(2)
     expect(position4.availableRules).toEqual(
@@ -241,7 +256,7 @@ describe('Take profit', () => {
     const position5 = getLastPosition(store.getState().bots[0])
     expect(position5.id).toBe(position4.id)
     expect(position5.status).toBe(PositionStatus.CLOSED)
-    expect(position5.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
+    expect(position5.orders[2].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
   })
 
   test('при даунтренде', async () => {
@@ -262,13 +277,16 @@ describe('Take profit', () => {
       })
     )
 
-    // 1. Открывем позицию 23.51 в шорт
+    // 1. Собираем позицию 23.96 и 23.9 в шорт
     await runStrategy(testBot.id, 23.96)
+    await runStrategy(testBot.id, 23.9)
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(3)
+    expect(position1.orders[0].rule).toBe(OrderRule.OPEN_ON_LEVEL)
+    expect(position1.orders[1].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
 
     // 2. SLT_50PERCENT при отскоке от 70% до следующего уровня
-    await runStrategy(testBot.id, 23.64)
+    await runStrategy(testBot.id, 23.6)
     expect(getLastPosition(store.getState().bots[0]).availableRules).toContain(
       OrderRule.CLOSE_BY_SLT_50PERCENT
     )
@@ -276,10 +294,11 @@ describe('Take profit', () => {
     await runStrategy(testBot.id, 23.74)
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.status).toBe(PositionStatus.CLOSED)
-    expect(position2.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_50PERCENT)
+    expect(position2.orders[2].rule).toBe(OrderRule.CLOSE_BY_SLT_50PERCENT)
 
-    // 3. Открывем позицию 23.51
+    // 3. Собираем позицию 23.54 (23.74 → 23.51), 23.51 и 23.48
     await runStrategy(testBot.id, 23.51)
+    await runStrategy(testBot.id, 23.48)
     const position3 = getLastPosition(store.getState().bots[0])
     expect(position3.openLevel.id).toBe(4)
     expect(position3.availableRules).not.toContain(
@@ -287,7 +306,7 @@ describe('Take profit', () => {
     )
 
     // 4. Закрываем при отскоке от 50% по правилу SLT_3TICKS
-    await runStrategy(testBot.id, 23.34)
+    await runStrategy(testBot.id, 23.3)
     expect(getLastPosition(store.getState().bots[0]).availableRules).toContain(
       OrderRule.CLOSE_BY_SLT_3TICKS
     )
@@ -295,7 +314,7 @@ describe('Take profit', () => {
     await runStrategy(testBot.id, 23.49)
     const position4 = getLastPosition(store.getState().bots[0])
     expect(position4.status).toBe(PositionStatus.CLOSED)
-    expect(position4.orders[1].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
+    expect(position4.orders[3].rule).toBe(OrderRule.CLOSE_BY_SLT_3TICKS)
 
     // 5. Открываем позицию 23.21
     await runStrategy(testBot.id, 23.21)

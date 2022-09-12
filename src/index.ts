@@ -1,5 +1,5 @@
 import db from './db'
-import { init, run } from './app'
+import { init, run, sendError } from './app'
 import { startServer, logUrl } from './server'
 
 db.initialize()
@@ -7,4 +7,4 @@ db.initialize()
   .then(run)
   .then(startServer)
   .then(logUrl)
-  .catch(console.error)
+  .catch(sendError)

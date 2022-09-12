@@ -4,16 +4,29 @@ import { isLevelAroundPrice } from './level'
 export const getLastPrice = (ask: number, bid: number, trend: Trend) =>
   trend.direction === TrendDirection.UP ? bid : ask
 
+export type PriceRange = [curr: number, prev?: number]
+
+export const getPriceRange = (
+  currPrice: number,
+  prevPrice?: number
+): PriceRange => [currPrice, prevPrice]
+
+export const isPriceInRange = (priceRange: PriceRange, price: number) =>
+  !priceRange[1]
+    ? priceRange[0] === price
+    : Math.max(...priceRange) >= price && Math.min(...priceRange) <= price
+
 export const getPriceDistanceToPrevLevel = (
   levels: Level[],
   lastPrice: number,
+  tickValue: number,
   isShort: boolean,
   openLevel?: Level,
   openPositionAvgPrice?: number,
   closedLevel?: Level
 ) => {
   if (openLevel && openPositionAvgPrice && !closedLevel) {
-    if (isLevelAroundPrice(lastPrice, openLevel.value)) return 0
+    if (isLevelAroundPrice([lastPrice], openLevel.value, tickValue)) return 0
 
     const closestLevel = [...levels]
       .sort((a, b) => b.value - a.value)
@@ -36,7 +49,10 @@ export const getPriceDistanceToPrevLevel = (
   }
 
   const positionLevel = closedLevel || openLevel
-  if (!positionLevel || isLevelAroundPrice(lastPrice, positionLevel.value))
+  if (
+    !positionLevel ||
+    isLevelAroundPrice([lastPrice], positionLevel.value, tickValue)
+  )
     return 0
 
   const sortedLevels = [...levels].sort((a, b) => b.value - a.value)

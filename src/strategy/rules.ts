@@ -2,7 +2,12 @@ import store from '../store'
 import { editData } from '../store/bots'
 import { Bot, Position, OrderRule, Level, LevelStatus } from '../db'
 import { updatePositionAvaiableRules } from './position'
-import { isLastPositionOpen, isLevelDisabled } from './utils'
+import {
+  isLastPositionOpen,
+  isLevelDisabled,
+  PriceRange,
+  isPriceInRange,
+} from './utils'
 
 enum Distance {
   GOOD = 0.7,
@@ -10,7 +15,7 @@ enum Distance {
   BAD = -0.5,
 }
 
-export const LEVEL_DISTANCE = 0.03
+export const LEVEL_DISTANCE_TICKS = 3
 
 const isAbleToCloseBySlt50 = (availableRules: Position['availableRules']) =>
   availableRules.includes(OrderRule.CLOSE_BY_SLT_50PERCENT)
@@ -106,13 +111,14 @@ export const isSlt3Ticks = (
   availableRules: Position['availableRules'],
   positionAvgPrice: number,
   lastPrice: number,
+  tickValue: number,
   isShort: boolean
 ) => {
   if (!availableRules.includes(OrderRule.CLOSE_BY_SLT_3TICKS)) return false
 
   return isShort
-    ? lastPrice >= positionAvgPrice - LEVEL_DISTANCE
-    : Math.abs(positionAvgPrice - lastPrice) <= LEVEL_DISTANCE
+    ? lastPrice >= positionAvgPrice - LEVEL_DISTANCE_TICKS * tickValue
+    : Math.abs(positionAvgPrice - lastPrice) <= LEVEL_DISTANCE_TICKS * tickValue
 }
 
 export const isSl = (
@@ -128,23 +134,32 @@ export const isSl = (
  * Получить правило для открытия/усреднения позиции
  */
 export const getNextOpeningRule = (
-  price: number,
+  priceRange: PriceRange,
   levelValue: number,
-  operation: 1 | 2
+  tickValue: number,
+  operation: 1 | 2,
+  orders: Position['orders'] = []
 ) => {
   const isLong = operation === 1
 
-  if (levelValue === price) {
+  if (
+    !orders.some((order) => order.rule === OrderRule.OPEN_ON_LEVEL) &&
+    isPriceInRange(priceRange, levelValue)
+  ) {
     return OrderRule.OPEN_ON_LEVEL
   }
 
-  if (price === levelValue - LEVEL_DISTANCE) {
+  if (
+    isPriceInRange(priceRange, levelValue - LEVEL_DISTANCE_TICKS * tickValue)
+  ) {
     return isLong
       ? OrderRule.OPEN_BEFORE_LEVEL_3TICKS
       : OrderRule.OPEN_AFTER_LEVEL_3TICKS
   }
 
-  if (price === levelValue + LEVEL_DISTANCE) {
+  if (
+    isPriceInRange(priceRange, levelValue + LEVEL_DISTANCE_TICKS * tickValue)
+  ) {
     return isLong
       ? OrderRule.OPEN_AFTER_LEVEL_3TICKS
       : OrderRule.OPEN_BEFORE_LEVEL_3TICKS

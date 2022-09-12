@@ -12,7 +12,7 @@ import {
 import { runStrategy } from '../strategy'
 import { getTestBot, getTestLevels, getTestTrend } from './utils'
 
-const testBot = getTestBot()
+const testBot = getTestBot([0.5, 1, 2, 3, 4, 5])
 
 describe('SL', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
@@ -23,7 +23,7 @@ describe('SL', () => {
         id: testBot.id,
         status: testBot.status,
         positions: [],
-        levels: getTestLevels([0.5, 1, 2, 3, 4, 5]),
+        lastPrice: undefined,
       })
     )
   })
@@ -36,20 +36,21 @@ describe('SL', () => {
     //      ╲╱             | 2
     // 1 ----------------- |
 
-    // 1. Открываем позицию в лонг на уровне 2 по правилам ON_LEVEL и AFTER_LEVEL_3TICKS
-    await runStrategy(testBot.id, 2.03)
+    // 1. Открываем позицию в лонг на уровне 2 по правилам ON_LEVEL и BEFORE_LEVEL_3TICKS
     await runStrategy(testBot.id, 2)
+    await runStrategy(testBot.id, 1.96)
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(3)
+    expect(position1.orders).toHaveLength(2)
     expect(position1.availableRules).not.toEqual(
       expect.arrayContaining([
         OrderRule.OPEN_ON_LEVEL,
-        OrderRule.OPEN_AFTER_LEVEL_3TICKS,
+        OrderRule.OPEN_BEFORE_LEVEL_3TICKS,
       ])
     )
 
     // 2. Цена падает на 50% от средней цены позиции до следующего уровня против тренда → SL
-    await runStrategy(testBot.id, 1.506)
+    await runStrategy(testBot.id, 1.49)
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(3)
     expect(position2.status).toBe(PositionStatus.CLOSED)
@@ -64,14 +65,14 @@ describe('SL', () => {
 
     store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend(true)] }))
 
-    // 1. Открываем позицию в шорт на уровне 2 по правилам BEFORE_LEVEL и ON_LEVEL
-    await runStrategy(testBot.id, 1.97)
+    // 1. Открываем позицию в шорт на уровне 2 по правилам ON_LEVEL и AFTER_LEVEL
     await runStrategy(testBot.id, 2)
+    await runStrategy(testBot.id, 2.04)
     const position1 = getLastPosition(store.getState().bots[0])
     expect(position1.openLevel.id).toBe(3)
 
     // 2. Цена поднимается на 50% от средней цены позиции до следующего уровня (3) против тренда → SL
-    await runStrategy(testBot.id, 2.495)
+    await runStrategy(testBot.id, 2.52)
     const position2 = getLastPosition(store.getState().bots[0])
     expect(position2.openLevel.id).toBe(3)
     expect(position2.status).toBe(PositionStatus.CLOSED)
@@ -88,6 +89,7 @@ describe('SL', () => {
     store.dispatch(editBot({ id: testBot.id, trends: [getTestTrend()] }))
 
     // 1. Long → SL
+    // 4 → 3.5
     await runStrategy(testBot.id, 4)
     await runStrategy(testBot.id, 3.5)
     const position1 = getLastPosition(store.getState().bots[0])
