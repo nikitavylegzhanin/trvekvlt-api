@@ -4,9 +4,9 @@ import { initBots, editBot } from '../store/bots'
 import { getLastPosition, getLastTrend } from '../strategy/utils'
 import { TrendDirection, PositionStatus, OrderRule } from '../db'
 import { runStrategy } from '../strategy'
-import { getTestBot, getTestLevels, getTestTrend } from './utils'
+import { getTestBot, getTestTrend } from './utils'
 
-const testBot = getTestBot()
+const testBot = getTestBot([1, 2, 3, 4, 5])
 
 describe('Открытие позиции в направлении тренда', () => {
   jest.useFakeTimers().setSystemTime(new Date(2021, 11, 31, 18).getTime())
@@ -16,7 +16,7 @@ describe('Открытие позиции в направлении тренда
       editBot({
         id: testBot.id,
         positions: [],
-        levels: getTestLevels([1, 2, 3, 4, 5]),
+        lastPrice: undefined,
       })
     )
   })
@@ -119,6 +119,7 @@ describe('Открытие позиции в направлении тренда
     expect(lastPosition4.orders[2].rule).toBe(OrderRule.OPEN_AFTER_LEVEL_3TICKS)
 
     // 5. Закроем позицию
+    await runStrategy(testBot.id, 2.5) // разблочим уровень 2
     await runStrategy(testBot.id, 3)
     const lastPosition5 = getLastPosition(store.getState().bots[0])
     expect(lastPosition5.status).toBe(PositionStatus.CLOSED)

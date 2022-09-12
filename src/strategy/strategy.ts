@@ -1,5 +1,3 @@
-import { or } from 'ramda'
-
 import store from '../store'
 import { selectBots, editBot } from '../store/bots'
 import { OrderRule } from '../db/Order'
@@ -12,24 +10,21 @@ import {
   isSlt3Ticks,
   isSl,
   getNextOpeningRule,
-  isAbleToCloseBySlt3Ticks,
 } from './rules'
 import { addCorrectionTrend } from './trend'
 // prettier-ignore
 import {
-  getBotById, isBotDisabled, getLastPosition, getLastTrend, isLevelDisabled,
+  getBotById, isBotDisabled, getLastPosition, getLastTrend, getPriceRange,
   getPriceDistanceToPrevLevel, getPositionProfit, isLastPositionClosed,
   isLastPositionOpen, isLastPositionOpenPartially, getLastClosedPosition,
-  isCorrectionTrend, isLastLevel, getNextLevel, getOpenOperation,
+  isCorrectionTrend, isLastLevel, getNextActiveLevel, getOpenOperation,
   isOpeningRuleAvailable, isDowntrend, getPositionAvgPrice, isClosedBySL
 } from './utils'
 import { Bot } from '../db'
 import { disableBotTillTomorrow } from './bot'
 
 export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
-  const state = store.getState()
-  const bots = selectBots(state)
-  const bot = getBotById(bots, botId)
+  let bot = getBotById(selectBots(store.getState()), botId)
 
   // пропускаем торговлю если движок выключен или в процессе обработки
   if (isBotDisabled(bot) || bot.isProcessing)
@@ -39,7 +34,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
   store.dispatch(editBot({ id: bot.id, isProcessing: true, lastPrice }))
 
   const date = new Date()
-  const lastPosition = getLastPosition(bot)
+  let lastPosition = getLastPosition(bot)
   const lastTrend = getLastTrend(bot)
 
   if (!isTradingInterval(date, bot.startDate, bot.endDate)) {
@@ -62,15 +57,15 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
     throw new Error('Last trend is undefined')
   }
 
-  const { levels, tickValue } = bot
+  const priceRange = getPriceRange(lastPrice, bot.lastPrice)
   const isShort = isDowntrend(lastTrend)
   const positionAvgPrice = lastPosition
     ? getPositionAvgPrice(lastPosition)
     : undefined
   const distance = getPriceDistanceToPrevLevel(
-    levels,
+    bot.levels,
     lastPrice,
-    tickValue,
+    bot.tickValue,
     isShort,
     lastPosition?.openLevel,
     positionAvgPrice,
@@ -80,97 +75,17 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
   // менеджерим правила при изменении цены
   if (lastPosition) {
     await manageClosingRules(bot.id, distance, lastPosition)
+    // обновляем значения
+    bot = getBotById(selectBots(store.getState()), botId)
+    lastPosition = getLastPosition(bot)
   }
 
-  const nextLevel = getNextLevel(levels, lastPrice, tickValue)
+  const nextLevel = getNextActiveLevel(bot.levels, priceRange, bot.tickValue)
   const isClosed = isLastPositionClosed(lastPosition)
   const isOpenPartially = isLastPositionOpenPartially(lastPosition)
 
-  if (
-    nextLevel &&
-    or(isClosed, isOpenPartially) &&
-    (!isShort || bot.isShortEnable)
-  ) {
-    if (
-      !isLevelDisabled(nextLevel) &&
-      !isLastLevel(nextLevel.id, levels) &&
-      (isClosed || !isAbleToCloseBySlt3Ticks(lastPosition.availableRules))
-    ) {
-      // добавляем только если следующее правило открытия доступно
-      const operation = getOpenOperation(lastTrend)
-      const openingRule = getNextOpeningRule(
-        lastPrice,
-        nextLevel.value,
-        tickValue,
-        operation
-      )
-
-      if (isOpeningRuleAvailable(openingRule, lastPosition)) {
-        // усредняем если позиция не закрыта
-        if (isOpenPartially) {
-          await averagingPosition(bot.id, lastPosition, openingRule)
-
-          // процесс выполнен
-          return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
-        }
-
-        // иначе открываем новую
-        await openPosition(bot.id, nextLevel, openingRule)
-
-        // процесс выполнен
-        return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
-      }
-    }
-  }
-
   // закрываем открытую позицию по tp, slt, sl
-  if (isLastPositionOpen(lastPosition?.status)) {
-    if (isTp(nextLevel, lastPosition.openLevel)) {
-      await closePosition(
-        bot.id,
-        lastPosition,
-        OrderRule.CLOSE_BY_TP,
-        nextLevel,
-        nextLevel
-      )
-
-      // процесс выполнен
-      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
-    }
-
-    if (isSlt50Percent(lastPosition.availableRules, distance)) {
-      await closePosition(
-        bot.id,
-        lastPosition,
-        OrderRule.CLOSE_BY_SLT_50PERCENT,
-        lastPosition.openLevel
-      )
-
-      // процесс выполнен
-      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
-    }
-
-    // slt 3ticks
-    if (
-      isSlt3Ticks(
-        lastPosition.availableRules,
-        positionAvgPrice,
-        lastPrice,
-        tickValue,
-        isShort
-      )
-    ) {
-      await closePosition(
-        bot.id,
-        lastPosition,
-        OrderRule.CLOSE_BY_SLT_3TICKS,
-        lastPosition.openLevel
-      )
-
-      // процесс выполнен
-      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
-    }
-
+  if (!isClosed) {
     // sl
     const positionProfit = getPositionProfit(
       lastPosition.openLevel,
@@ -196,6 +111,91 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
       if (lastClosedPosition && isClosedBySL(lastClosedPosition)) {
         await addCorrectionTrend(bot.id, lastTrend)
       }
+
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
+    }
+
+    // slt 3ticks
+    if (
+      isSlt3Ticks(
+        lastPosition.availableRules,
+        positionAvgPrice,
+        lastPrice,
+        bot.tickValue,
+        isShort
+      )
+    ) {
+      await closePosition(
+        bot.id,
+        lastPosition,
+        OrderRule.CLOSE_BY_SLT_3TICKS,
+        lastPosition.openLevel
+      )
+
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
+    }
+
+    // slt50percent
+    if (isSlt50Percent(lastPosition.availableRules, distance)) {
+      await closePosition(
+        bot.id,
+        lastPosition,
+        OrderRule.CLOSE_BY_SLT_50PERCENT,
+        lastPosition.openLevel
+      )
+
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
+    }
+
+    // tp
+    if (isTp(nextLevel, lastPosition.openLevel)) {
+      await closePosition(
+        bot.id,
+        lastPosition,
+        OrderRule.CLOSE_BY_TP,
+        nextLevel,
+        nextLevel
+      )
+
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
+    }
+  }
+
+  if (
+    (isClosed || isOpenPartially) &&
+    (nextLevel || lastPosition) && // открываем от уровня либо усредняем
+    (!isShort || bot.isShortEnable)
+  ) {
+    // добавляем только если следующее правило открытия доступно
+    const operation = getOpenOperation(lastTrend)
+    const openingRule = getNextOpeningRule(
+      priceRange,
+      nextLevel?.value || lastPosition.openLevel.value,
+      bot.tickValue,
+      operation,
+      lastPosition?.orders
+    )
+
+    if (isOpeningRuleAvailable(openingRule, lastPosition)) {
+      // усредняем если позиция не закрыта
+      if (isOpenPartially) {
+        await averagingPosition(bot.id, lastPosition, openingRule)
+
+        // процесс выполнен
+        return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
+      }
+
+      // иначе открываем новую
+      if (nextLevel && !isLastLevel(nextLevel.id, bot.levels)) {
+        await openPosition(bot.id, nextLevel, openingRule)
+      }
+
+      // процесс выполнен
+      return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
     }
   }
 

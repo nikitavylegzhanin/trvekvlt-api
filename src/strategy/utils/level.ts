@@ -2,6 +2,7 @@ import { compose, propEq, not } from 'ramda'
 
 import { Level, LevelStatus, Trend, TrendDirection } from '../../db'
 import { LEVEL_DISTANCE_TICKS } from '../rules'
+import { PriceRange } from './price'
 
 export const isLastLevel = (levelId: Level['id'], levels: Level[]) => {
   const sortedLevels = [...levels].sort((a, b) => a.value - b.value)
@@ -11,23 +12,33 @@ export const isLastLevel = (levelId: Level['id'], levels: Level[]) => {
 }
 
 export const isLevelAroundPrice = (
-  price: number,
+  priceRange: PriceRange,
   levelValue: number,
   tickValue: number
 ) =>
-  price >= levelValue - LEVEL_DISTANCE_TICKS * tickValue &&
-  price <= levelValue + LEVEL_DISTANCE_TICKS * tickValue
+  (priceRange[0] >= levelValue - LEVEL_DISTANCE_TICKS * tickValue &&
+    priceRange[0] <= levelValue + LEVEL_DISTANCE_TICKS * tickValue) ||
+  (priceRange[1]
+    ? priceRange[1] >= levelValue - LEVEL_DISTANCE_TICKS * tickValue &&
+      priceRange[1] <= levelValue + LEVEL_DISTANCE_TICKS * tickValue
+    : false)
 
 /**
  * Получить доступный уровень в диапазоне +/-3тика
  * @param levels все возможные уровни
- * @param lastPrice текущая цена
+ * @param priceRange текущая и предыдущая цены
+ * @param tickValue величина одного тика
  */
-export const getNextLevel = (
+export const getNextActiveLevel = (
   levels: Level[],
-  lastPrice: number,
+  priceRange: PriceRange,
   tickValue: number
-) => levels.find(({ value }) => isLevelAroundPrice(lastPrice, value, tickValue))
+) =>
+  levels.find(
+    ({ value, status }) =>
+      status === LevelStatus.ACTIVE &&
+      isLevelAroundPrice(priceRange, value, tickValue)
+  )
 
 export const getTargetValue = (
   levels: Level[],

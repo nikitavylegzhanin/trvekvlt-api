@@ -33,6 +33,7 @@ describe('Correction', () => {
     expect(lastPosition3.orders[1].rule).toBe(OrderRule.CLOSE_BY_SL)
 
     // 4. Открываем еще одну
+    // 1.49 -> 2
     await runStrategy(testBot.id, 2)
     const lastPosition4 = getLastPosition(store.getState().bots[0])
     expect(lastPosition4.openLevel.id).toBe(3)

@@ -2,7 +2,12 @@ import store from '../store'
 import { editData } from '../store/bots'
 import { Bot, Position, OrderRule, Level, LevelStatus } from '../db'
 import { updatePositionAvaiableRules } from './position'
-import { isLastPositionOpen, isLevelDisabled } from './utils'
+import {
+  isLastPositionOpen,
+  isLevelDisabled,
+  PriceRange,
+  isPriceInRange,
+} from './utils'
 
 enum Distance {
   GOOD = 0.7,
@@ -129,24 +134,32 @@ export const isSl = (
  * Получить правило для открытия/усреднения позиции
  */
 export const getNextOpeningRule = (
-  price: number,
+  priceRange: PriceRange,
   levelValue: number,
   tickValue: number,
-  operation: 1 | 2
+  operation: 1 | 2,
+  orders: Position['orders'] = []
 ) => {
   const isLong = operation === 1
 
-  if (levelValue === price) {
+  if (
+    !orders.some((order) => order.rule === OrderRule.OPEN_ON_LEVEL) &&
+    isPriceInRange(priceRange, levelValue)
+  ) {
     return OrderRule.OPEN_ON_LEVEL
   }
 
-  if (price === levelValue - LEVEL_DISTANCE_TICKS * tickValue) {
+  if (
+    isPriceInRange(priceRange, levelValue - LEVEL_DISTANCE_TICKS * tickValue)
+  ) {
     return isLong
       ? OrderRule.OPEN_BEFORE_LEVEL_3TICKS
       : OrderRule.OPEN_AFTER_LEVEL_3TICKS
   }
 
-  if (price === levelValue + LEVEL_DISTANCE_TICKS * tickValue) {
+  if (
+    isPriceInRange(priceRange, levelValue + LEVEL_DISTANCE_TICKS * tickValue)
+  ) {
     return isLong
       ? OrderRule.OPEN_AFTER_LEVEL_3TICKS
       : OrderRule.OPEN_BEFORE_LEVEL_3TICKS
