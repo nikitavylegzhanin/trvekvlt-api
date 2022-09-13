@@ -1,14 +1,45 @@
+import { Account } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Account'
 import { Raw } from 'typeorm'
-import { not, isNil, pipe, reduce, filter, uniq, without, propEq } from 'ramda'
+import {
+  not,
+  isNil,
+  pipe,
+  reduce,
+  filter,
+  uniq,
+  without,
+  propEq,
+  assoc,
+} from 'ramda'
 
 import db, { BotStatus } from './db'
-import { getInstrument, getTradingSchedule, marketDataStream } from './api'
+import {
+  getAccounts,
+  getSandboxAccounts,
+  getLiquidPortfolio,
+  getInstrument,
+  getTradingSchedule,
+  marketDataStream,
+} from './api'
 import store from './store'
+import { StoredAccount, initAccounts } from './store/accounts'
 import { StoredBot, initBots, selectBots } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
 import { sendMessage } from './telegram'
 import { getLastTrend, getLastPrice } from './strategy/utils'
 import { runStrategy } from './strategy'
+
+const accountToStore = async (
+  account: Account & { isSandbox: boolean }
+): Promise<StoredAccount> => ({
+  id: account.id,
+  name: account.name,
+  isFullAccess: account.accessLevel === 'ACCOUNT_ACCESS_LEVEL_FULL_ACCESS',
+  isSandbox: account.isSandbox,
+  liquidPortfolio: !account.isSandbox
+    ? await getLiquidPortfolio(account.id)
+    : undefined,
+})
 
 const getRelatedLevels = pipe(
   reduce<Position, Level[]>(
@@ -19,7 +50,7 @@ const getRelatedLevels = pipe(
   uniq
 )
 
-export const toStore = async (bot: Bot): Promise<StoredBot> => {
+export const botToStore = async (bot: Bot): Promise<StoredBot> => {
   const instrument = await getInstrument(bot.ticker, bot.instrumentType)
 
   if (!instrument.isTradeAvailable)
@@ -66,10 +97,25 @@ export const toStore = async (bot: Bot): Promise<StoredBot> => {
 }
 
 export const init = async () => {
+  // init accounts
+  const accounts = await getAccounts()
+  const sandboxAccounts = await getSandboxAccounts()
+
+  const storedAccounts = await Promise.all(
+    [
+      ...accounts.map(assoc('isSandbox', false)),
+      ...sandboxAccounts.map(assoc('isSandbox', true)),
+    ].map(accountToStore)
+  )
+
+  store.dispatch(initAccounts(storedAccounts))
+
+  // init bots
   const bots = await db.manager.find(Bot, {
     relations: ['levels'],
   })
-  const storedBots = await Promise.all(bots.map(toStore))
+
+  const storedBots = await Promise.all(bots.map(botToStore))
 
   store.dispatch(initBots(storedBots))
 
@@ -81,8 +127,6 @@ export const init = async () => {
       subscriptionAction: 'SUBSCRIPTION_ACTION_SUBSCRIBE',
     },
   })
-
-  return storedBots
 }
 
 type Order = {

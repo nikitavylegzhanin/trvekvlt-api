@@ -4,6 +4,7 @@ import {
   Quotation__Output,
 } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Quotation'
 import { Share } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Share'
+import { Account } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Account'
 
 import { Order, OrderDirection, OrderType } from './db'
 
@@ -14,6 +15,8 @@ const api = new OpenAPIClient({
 const sandboxApi = new OpenAPIClient({
   token: process.env.API_TOKEN_SANDBOX,
 })
+
+const NANO_DIVIDER = 1000000000
 
 export const parsePrice = (value: Quotation__Output) =>
   Number.parseFloat(
@@ -105,12 +108,12 @@ export const addSandboxAccount = () =>
     })
   )
 
-export const getSandboxAccountId = () =>
+export const getOrCreateSandboxAccountId = () =>
   new Promise<string>((resolve, reject) =>
-    sandboxApi.sandbox.getSandboxAccounts({}, (error, { accounts }) => {
+    api.sandbox.getSandboxAccounts({}, (error, { accounts }) => {
       if (error) return reject(error)
 
-      const [account] = accounts
+      const account = accounts[accounts.length - 1]
 
       if (account) return resolve(account.id)
 
@@ -122,7 +125,32 @@ export const getSandboxAccountId = () =>
     })
   )
 
-const NANO_DIVIDER = 1000000000
+export const getAccounts = () =>
+  new Promise<Account[]>((resolve, reject) =>
+    api.usersService.getAccounts({}, (error, { accounts }) => {
+      if (error) return reject(error)
+
+      return resolve(accounts)
+    })
+  )
+
+export const getSandboxAccounts = () =>
+  new Promise<Account[]>((resolve, reject) =>
+    api.sandbox.getSandboxAccounts({}, (error, { accounts }) => {
+      if (error) return reject(error)
+
+      return resolve(accounts)
+    })
+  )
+
+export const getLiquidPortfolio = (accountId: string) =>
+  new Promise<number>((resolve, reject) =>
+    api.usersService.getMarginAttributes({ accountId }, (error, res) => {
+      if (error) return reject(error)
+
+      return resolve(parsePrice(res.liquidPortfolio))
+    })
+  )
 
 export const numberToQuotation = (value: number): Quotation => {
   const units = Math.floor(value)
@@ -294,19 +322,6 @@ export const getCandles = (figi: string, from: Date, to: Date, interval = 4) =>
 //
 // Prod methods
 // ------------
-
-type Account = {
-  id: string
-}
-
-export const getAccounts = () =>
-  new Promise<Account[]>((resolve, reject) =>
-    api.usersService.getAccounts({}, (error, res) => {
-      if (error) return reject(error)
-
-      return resolve(res.accounts)
-    })
-  )
 
 export type Operation = {
   id: string

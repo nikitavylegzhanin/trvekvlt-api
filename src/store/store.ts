@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit'
 
+import accounts from './accounts'
 import bots from './bots'
 
 const store = configureStore({
-  reducer: { bots },
+  reducer: { accounts, bots },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
