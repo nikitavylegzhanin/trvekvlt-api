@@ -3,8 +3,13 @@ import {
   Quotation,
   Quotation__Output,
 } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Quotation'
-import { Share } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Share'
+import {
+  Share,
+  Share__Output,
+} from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Share'
 import { Account } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Account'
+import { Instrument__Output } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Instrument'
+import { Currency } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Currency'
 
 import { Order, OrderDirection, OrderType } from './db'
 
@@ -18,27 +23,71 @@ const sandboxApi = new OpenAPIClient({
 
 const NANO_DIVIDER = 1000000000
 
-export const parsePrice = (value: Quotation__Output) =>
+export const parseQuotation = (value: Quotation__Output) =>
   Number.parseFloat(
     (parseInt(value.units) + value.nano / NANO_DIVIDER).toFixed(2)
   )
 
-type Instrument = {
+export const getCurrencies = () =>
+  new Promise<Currency[]>((resolve, reject) =>
+    api.instruments.currencies({}, (error, { instruments }) => {
+      if (error) return reject(error)
+
+      return resolve(instruments)
+    })
+  )
+
+type LastPrice = {
+  figi: string
+  price: number
+  date: Date
+}
+
+export const getLastPrices = (figi: string[]) =>
+  new Promise<LastPrice[]>((resolve, reject) =>
+    api.marketData.getLastPrices({ figi }, (error, { lastPrices }) => {
+      if (error) return reject(error)
+
+      return resolve(
+        lastPrices.map((lastPrice) => ({
+          figi: lastPrice.figi,
+          price: parseQuotation(lastPrice.price),
+          date: parseDateToResponse(lastPrice.time),
+        }))
+      )
+    })
+  )
+
+export type Instrument = {
   figi: string
   ticker: string
-  name: string
   exchange: string
   isShortEnable: boolean
   isTradeAvailable: boolean
   tickValue: number
+  kLong: number
+  kShort: number
 }
 
 type InstrumentType = 'future' | 'share'
 
+const instrumentToResponse = (
+  instrument: Instrument__Output | Share__Output
+): Instrument => ({
+  figi: instrument.figi,
+  ticker: instrument.ticker,
+  exchange: instrument.exchange,
+  isShortEnable: instrument.shortEnabledFlag,
+  isTradeAvailable: instrument.apiTradeAvailableFlag,
+  tickValue: parseQuotation(instrument.minPriceIncrement),
+  kLong: 1 / parseQuotation(instrument.dlong),
+  kShort: 1 / parseQuotation(instrument.dshort),
+})
+
 export const getInstrument = (ticker: string, type: InstrumentType) =>
   new Promise<Instrument>((resolve, reject) =>
     sandboxApi.instruments[
-      type === 'future' ? 'futures' : ('shares' as 'futures')
+      type === 'share' ? 'shares' : ('futures' as 'shares')
     ]({}, (error, res) => {
       if (error) return reject(error)
 
@@ -48,35 +97,30 @@ export const getInstrument = (ticker: string, type: InstrumentType) =>
 
       if (!instrument) return reject(new Error('Instrument not found'))
 
-      return resolve({
-        figi: instrument.figi,
-        ticker: instrument.ticker,
-        name: instrument.name,
-        exchange: instrument.exchange,
-        isShortEnable: instrument.shortEnabledFlag,
-        isTradeAvailable: instrument.apiTradeAvailableFlag,
-        tickValue: parsePrice(instrument.minPriceIncrement),
-      })
+      return resolve(instrumentToResponse(instrument))
     })
+  )
+
+export const getInstrumentByUid = (uid: string) =>
+  new Promise<Instrument>((resolve, reject) =>
+    api.instruments.getInstrumentBy(
+      { idType: 'INSTRUMENT_ID_TYPE_UID', id: uid },
+      (error, { instrument }) => {
+        if (error) return reject(error)
+
+        return resolve(instrumentToResponse(instrument))
+      }
+    )
   )
 
 export const getInstrumentByFigi = (figi: string) =>
   new Promise<Instrument>((resolve, reject) =>
     sandboxApi.instruments.getInstrumentBy(
       { idType: 'INSTRUMENT_ID_TYPE_FIGI', id: figi },
-      (err, res) => {
+      (err, { instrument }) => {
         if (err) return reject(err)
 
-        const { instrument } = res
-        return resolve({
-          figi: instrument.figi,
-          ticker: instrument.ticker,
-          name: instrument.name,
-          exchange: instrument.exchange,
-          isShortEnable: instrument.shortEnabledFlag,
-          isTradeAvailable: instrument.apiTradeAvailableFlag,
-          tickValue: parsePrice(instrument.minPriceIncrement),
-        })
+        return resolve(instrumentToResponse(instrument))
       }
     )
   )
@@ -148,7 +192,7 @@ export const getLiquidPortfolio = (accountId: string) =>
     api.usersService.getMarginAttributes({ accountId }, (error, res) => {
       if (error) return reject(error)
 
-      return resolve(parsePrice(res.liquidPortfolio))
+      return resolve(parseQuotation(res.liquidPortfolio))
     })
   )
 
@@ -196,7 +240,7 @@ export const placeOrder = (
         if (error) return reject(error)
 
         return resolve({
-          price: parsePrice(res.executedOrderPrice),
+          price: parseQuotation(res.executedOrderPrice),
           currency: res.executedOrderPrice.currency,
           quantity,
           direction:
@@ -220,7 +264,7 @@ export const getOrderState = (accountId: string, orderId: string) =>
         if (error) return reject(error)
 
         return resolve({
-          price: parsePrice(res.executedOrderPrice),
+          price: parseQuotation(res.executedOrderPrice),
           currency: res.executedOrderPrice.currency,
           quantity: Number.parseInt(res.lotsExecuted),
           direction:
@@ -308,10 +352,10 @@ export const getCandles = (figi: string, from: Date, to: Date, interval = 4) =>
         return resolve(
           res.candles.map((candle) => ({
             date: parseDateToResponse(candle.time),
-            low: parsePrice(candle.low),
-            open: parsePrice(candle.open),
-            close: parsePrice(candle.close),
-            high: parsePrice(candle.high),
+            low: parseQuotation(candle.low),
+            open: parseQuotation(candle.open),
+            close: parseQuotation(candle.close),
+            high: parseQuotation(candle.high),
             volume: parseInt(candle.volume),
           }))
         )
@@ -361,8 +405,8 @@ export const getOperations = (
             figi: operation.figi,
             parentOperationId: operation.parentOperationId,
             currency: operation.currency,
-            payment: parsePrice(operation.payment),
-            price: parsePrice(operation.price),
+            payment: parseQuotation(operation.payment),
+            price: parseQuotation(operation.price),
             quantity: parseInt(operation.quantity),
             date: parseDateToResponse(operation.date),
             type: operation.type,
@@ -388,7 +432,7 @@ export const getOpenPositions = (accountId: string) =>
         res.positions.map((position) => ({
           figi: position.figi,
           instrumentType: position.instrumentType,
-          quantity: parsePrice(position.quantity),
+          quantity: parseQuotation(position.quantity),
         }))
       )
     })

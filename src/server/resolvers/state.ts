@@ -45,6 +45,24 @@ class StoredAccount {
   liquidPortfolio?: number
 }
 
+@ObjectType()
+class StoredCurrency {
+  @Field(() => String)
+  figi: string
+
+  @Field(() => String)
+  name: string
+
+  @Field(() => String)
+  isoName: string
+
+  @Field(() => Float)
+  lastPrice: number
+
+  @Field(() => Date)
+  date: Date
+}
+
 @Resolver()
 export class StateResolver {
   @Query(() => [StoredBot])
@@ -59,5 +77,12 @@ export class StateResolver {
     const { accounts } = store.getState()
 
     return accounts
+  }
+
+  @Query(() => [StoredCurrency])
+  storedCurrencies(): StoredCurrency[] {
+    const { currencies } = store.getState()
+
+    return currencies
   }
 }

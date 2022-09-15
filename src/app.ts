@@ -10,19 +10,23 @@ import {
   without,
   propEq,
   assoc,
+  propSatisfies,
 } from 'ramda'
 
 import db, { BotStatus } from './db'
 import {
   getAccounts,
   getSandboxAccounts,
+  getCurrencies,
+  getLastPrices,
   getLiquidPortfolio,
-  getInstrument,
+  getInstrumentByUid,
   getTradingSchedule,
   marketDataStream,
 } from './api'
 import store from './store'
 import { StoredAccount, initAccounts } from './store/accounts'
+import { initCurrencies } from './store/currencies'
 import { StoredBot, initBots, selectBots } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
 import { sendMessage } from './telegram'
@@ -51,7 +55,7 @@ const getRelatedLevels = pipe(
 )
 
 export const botToStore = async (bot: Bot): Promise<StoredBot> => {
-  const instrument = await getInstrument(bot.ticker, bot.instrumentType)
+  const instrument = await getInstrumentByUid(bot.uid)
 
   if (!instrument.isTradeAvailable)
     throw new Error('Instrument is not available for trade')
@@ -84,12 +88,10 @@ export const botToStore = async (bot: Bot): Promise<StoredBot> => {
 
   return {
     ...bot,
+    ...instrument,
     positions,
     trends: [lastTrend],
     levels: [...bot.levels, ...relatedLevels],
-    figi: instrument.figi,
-    isShortEnable: instrument.isShortEnable,
-    tickValue: instrument.tickValue,
     startDate: schedule.startDate,
     endDate: schedule.endDate,
     isProcessing: false,
@@ -97,7 +99,7 @@ export const botToStore = async (bot: Bot): Promise<StoredBot> => {
 }
 
 export const init = async () => {
-  // init accounts
+  // accounts
   const accounts = await getAccounts()
   const sandboxAccounts = await getSandboxAccounts()
 
@@ -110,7 +112,33 @@ export const init = async () => {
 
   store.dispatch(initAccounts(storedAccounts))
 
-  // init bots
+  // currencies
+  const allCurrencies = await getCurrencies()
+  const currencies = allCurrencies.filter(
+    propSatisfies((iso) => ['usd', 'eur'].includes(iso), 'isoCurrencyName')
+  )
+
+  const lastPrices = await getLastPrices(
+    currencies.map((currency) => currency.figi)
+  )
+
+  store.dispatch(
+    initCurrencies(
+      currencies.map((currency) => {
+        const lastPrice = lastPrices.find(propEq('figi', currency.figi))
+
+        return {
+          figi: currency.figi,
+          name: currency.name,
+          isoName: currency.isoCurrencyName,
+          lastPrice: lastPrice.price,
+          date: lastPrice.date,
+        }
+      })
+    )
+  )
+
+  // bots
   const bots = await db.manager.find(Bot, {
     relations: ['levels'],
   })
