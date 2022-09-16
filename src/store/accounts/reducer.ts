@@ -12,7 +12,7 @@ export type StoredAccount = {
 }
 
 const reducer = createReducer<StoredAccount[]>([], (builder) =>
-  builder.addCase(initAccounts, (_bots, action) => action.payload)
+  builder.addCase(initAccounts, (_accounts, action) => action.payload)
 )
 
 export default reducer

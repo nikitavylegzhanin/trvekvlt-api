@@ -67,6 +67,7 @@ export type Instrument = {
   tickValue: number
   kLong: number
   kShort: number
+  currency: string
 }
 
 type InstrumentType = 'future' | 'share'
@@ -82,6 +83,7 @@ const instrumentToResponse = (
   tickValue: parseQuotation(instrument.minPriceIncrement),
   kLong: 1 / parseQuotation(instrument.dlong),
   kShort: 1 / parseQuotation(instrument.dshort),
+  currency: instrument.currency,
 })
 
 export const getInstrument = (ticker: string, type: InstrumentType) =>

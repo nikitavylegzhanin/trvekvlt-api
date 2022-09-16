@@ -1,6 +1,7 @@
 import { createReducer } from '@reduxjs/toolkit'
 
 import { Bot } from '../../db'
+import { Instrument } from '../../api'
 import {
   initBots,
   addBot,
@@ -13,15 +14,14 @@ import {
 const payloadDataKeys = ['level', 'position', 'trend']
 type botDataValue = Bot['levels'][0] | Bot['positions'][0] | Bot['trends'][0]
 
-export type StoredBot = Bot & {
-  figi: string
-  startDate: Date
-  endDate: Date
-  isShortEnable: boolean
-  tickValue: number
-  isProcessing: boolean
-  lastPrice?: number
-}
+export type StoredBot = Bot &
+  Instrument & {
+    startDate: Date
+    endDate: Date
+    isProcessing: boolean
+    lastPrice?: number
+    currency: string
+  }
 
 const reducer = createReducer<StoredBot[]>([], (builder) =>
   builder

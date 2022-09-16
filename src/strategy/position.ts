@@ -1,5 +1,8 @@
+import { propEq } from 'ramda'
+
 import store from '../store'
-import { StoredBot, addData, editData } from '../store/bots'
+import { StoredBot, addData, editData, selectBots } from '../store/bots'
+import { selectAccounts } from '../store/accounts'
 import {
   getPositionNextStatus,
   getOpenPositionMessage,
@@ -7,7 +10,9 @@ import {
   getBotById,
   getLastTrend,
   getOpenOperation,
+  getCloseOperation,
   getPositionValue,
+  getOrderQt,
 } from './utils'
 import db, {
   Level,
@@ -32,14 +37,26 @@ export const openPosition = async (
   openingRule: OrderRule
 ) => {
   try {
-    const bot = getBotById(store.getState().bots, botId)
+    const state = store.getState()
+    const bots = selectBots(state)
+    const bot = getBotById(bots, botId)
+    const accounts = selectAccounts(state)
+    const account = accounts.find(propEq('id', bot.accountId))
     const lastTrend = getLastTrend(bot)
     const operation = getOpenOperation(lastTrend)
 
     // отправляем заявку
+    const orderQt = getOrderQt(
+      bot.lastPrice,
+      bot.currency,
+      bot.maxVolume,
+      operation === 1 ? bot.kLong : bot.kShort,
+      account?.liquidPortfolio
+    )
+
     const placedOrder = await placeOrder(
       bot.figi,
-      1,
+      orderQt,
       operation,
       bot.accountId,
       bot.lastPrice
@@ -145,14 +162,26 @@ export const averagingPosition = async (
   }
 
   try {
-    const bot = getBotById(store.getState().bots, botId)
+    const state = store.getState()
+    const bots = selectBots(state)
+    const bot = getBotById(bots, botId)
+    const accounts = selectAccounts(state)
+    const account = accounts.find(propEq('id', bot.accountId))
     const lastTrend = getLastTrend(bot)
     const operation = getOpenOperation(lastTrend)
 
     // отправляем заявку
+    const orderQt = getOrderQt(
+      bot.lastPrice,
+      bot.currency,
+      bot.maxVolume,
+      operation === 1 ? bot.kLong : bot.kShort,
+      account?.liquidPortfolio
+    )
+
     const placedOrder = await placeOrder(
       bot.figi,
-      1,
+      orderQt,
       operation,
       bot.accountId,
       bot.lastPrice
@@ -230,7 +259,7 @@ export const closePosition = async (
   try {
     const bot = getBotById(store.getState().bots, botId)
     const lastTrend = getLastTrend(bot)
-    const operation = getOpenOperation(lastTrend)
+    const operation = getCloseOperation(lastTrend)
 
     // отправляем заявку
     const placedOrder = await placeOrder(

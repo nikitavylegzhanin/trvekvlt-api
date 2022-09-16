@@ -25,6 +25,9 @@ class StoredBot extends Bot {
 
   @Field(() => Float, { nullable: true })
   lastPrice?: number
+
+  @Field(() => String)
+  currency: string
 }
 
 @ObjectType()

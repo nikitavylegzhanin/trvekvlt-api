@@ -1,6 +1,8 @@
 import { pathEq, pipe, filter, propEq, findLast, T, path } from 'ramda'
 
 import { Position, PositionStatus, OrderRule } from '../../db'
+import store from '../../store'
+import { selectCurrencies } from '../../store/currencies'
 
 export const getLastPosition = pipe(path(['positions']), findLast<Position>(T))
 
@@ -69,3 +71,39 @@ export const getPositionAvgPrice = (position: Position) => {
 
 export const isClosedBySL = (position: Position) =>
   position.orders.findIndex(propEq('rule', OrderRule.CLOSE_BY_SL)) !== -1
+
+/**
+ * Получить количество лотов на открытие/усреднение заявки
+ * @param lastPrice последняя цена по инструменту
+ * @param isoCurrencyName код валюты цены
+ * @param maxVolume максимальный объем позиции от депозита в процентах
+ * @param marginValue коэффициент кредитного плеча
+ * @param liquidPortfolio ликвидный портфель в рублях
+ */
+export const getOrderQt = (
+  lastPrice: number,
+  isoCurrencyName: string,
+  maxVolume: number,
+  marginValue: number,
+  liquidPortfolio?: number
+) => {
+  if (!liquidPortfolio) return 1
+
+  const STEPS = 3
+  const maxOrderVolume = (liquidPortfolio * maxVolume * marginValue) / STEPS
+  let currencyPrice = 1
+
+  if (isoCurrencyName !== 'rub') {
+    const state = store.getState()
+    const currencies = selectCurrencies(state)
+    const currency = currencies.find(propEq('isoName', isoCurrencyName))
+
+    if (!currency) {
+      throw new Error(`Currency "${isoCurrencyName}" not found`)
+    }
+
+    currencyPrice = currency.lastPrice
+  }
+
+  return Math.floor(maxOrderVolume / (lastPrice * currencyPrice))
+}
