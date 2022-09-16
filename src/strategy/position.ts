@@ -1,5 +1,8 @@
+import { propEq } from 'ramda'
+
 import store from '../store'
-import { StoredBot, addData, editData } from '../store/bots'
+import { StoredBot, addData, editData, selectBots } from '../store/bots'
+import { selectAccounts } from '../store/accounts'
 import {
   getPositionNextStatus,
   getOpenPositionMessage,
@@ -7,7 +10,9 @@ import {
   getBotById,
   getLastTrend,
   getOpenOperation,
+  getCloseOperation,
   getPositionValue,
+  getOrderQt,
 } from './utils'
 import db, {
   Level,
@@ -25,21 +30,41 @@ import { sendMessage } from '../telegram'
 
 /**
  * Открытие новой позиции
+ * @param botId
+ * @param openLevel уровень от которого открываем позицию
+ * @param openingRule правило открытия
+ * @param lastPriceVolume объем стакана по последней цене
  */
 export const openPosition = async (
   botId: StoredBot['id'],
   openLevel: Level,
-  openingRule: OrderRule
+  openingRule: OrderRule,
+  lastPriceVolume: number
 ) => {
   try {
-    const bot = getBotById(store.getState().bots, botId)
+    const state = store.getState()
+    const bots = selectBots(state)
+    const bot = getBotById(bots, botId)
+    const accounts = selectAccounts(state)
+    const account = accounts.find(propEq('id', bot.accountId))
     const lastTrend = getLastTrend(bot)
     const operation = getOpenOperation(lastTrend)
+
+    const orderQt = getOrderQt(
+      bot.lastPrice,
+      bot.currency,
+      bot.maxVolume,
+      operation === 1 ? bot.kLong : bot.kShort,
+      account?.liquidPortfolio
+    )
+
+    // открываем только при достаточном объеме
+    if (orderQt < lastPriceVolume) return
 
     // отправляем заявку
     const placedOrder = await placeOrder(
       bot.figi,
-      1,
+      orderQt,
       operation,
       bot.accountId,
       bot.lastPrice
@@ -113,46 +138,66 @@ export const openPosition = async (
 
 /**
  * Усреденение позиции
+ * @param botId
+ * @param position открытая позиция
+ * @param averagingRule правило усреднения
+ * @param lastPriceVolume объем стакана по последней цене
  */
 export const averagingPosition = async (
   botId: StoredBot['id'],
   position: Position,
-  averagingRule: OrderRule
+  averagingRule: OrderRule,
+  lastPriceVolume: number
 ) => {
-  const availableRules = position.availableRules.filter(
-    (rule) => rule !== averagingRule
-  )
-  const status = getPositionNextStatus(availableRules)
-
-  // блочим уровень, если позиция открыта полностью
-  if (status === PositionStatus.OPEN_FULL) {
-    store.dispatch(
-      editData({
-        botId,
-        level: {
-          id: position.openLevel.id,
-          status: LevelStatus.DISABLED_DURING_SESSION,
-        },
-        position: {
-          id: position.id,
-          openLevel: {
-            ...position.openLevel,
-            status: LevelStatus.DISABLED_DURING_SESSION,
-          },
-        },
-      })
-    )
-  }
-
   try {
-    const bot = getBotById(store.getState().bots, botId)
+    const state = store.getState()
+    const bots = selectBots(state)
+    const bot = getBotById(bots, botId)
+    const accounts = selectAccounts(state)
+    const account = accounts.find(propEq('id', bot.accountId))
     const lastTrend = getLastTrend(bot)
     const operation = getOpenOperation(lastTrend)
+
+    const orderQt = getOrderQt(
+      bot.lastPrice,
+      bot.currency,
+      bot.maxVolume,
+      operation === 1 ? bot.kLong : bot.kShort,
+      account?.liquidPortfolio
+    )
+
+    // усредняем только при достаточном объеме
+    if (orderQt < lastPriceVolume) return
+
+    const availableRules = position.availableRules.filter(
+      (rule) => rule !== averagingRule
+    )
+    const status = getPositionNextStatus(availableRules)
+
+    // блочим уровень, если позиция открыта полностью
+    if (status === PositionStatus.OPEN_FULL) {
+      store.dispatch(
+        editData({
+          botId,
+          level: {
+            id: position.openLevel.id,
+            status: LevelStatus.DISABLED_DURING_SESSION,
+          },
+          position: {
+            id: position.id,
+            openLevel: {
+              ...position.openLevel,
+              status: LevelStatus.DISABLED_DURING_SESSION,
+            },
+          },
+        })
+      )
+    }
 
     // отправляем заявку
     const placedOrder = await placeOrder(
       bot.figi,
-      1,
+      orderQt,
       operation,
       bot.accountId,
       bot.lastPrice
@@ -230,7 +275,7 @@ export const closePosition = async (
   try {
     const bot = getBotById(store.getState().bots, botId)
     const lastTrend = getLastTrend(bot)
-    const operation = getOpenOperation(lastTrend)
+    const operation = getCloseOperation(lastTrend)
 
     // отправляем заявку
     const placedOrder = await placeOrder(

@@ -25,6 +25,45 @@ class StoredBot extends Bot {
 
   @Field(() => Float, { nullable: true })
   lastPrice?: number
+
+  @Field(() => String)
+  currency: string
+}
+
+@ObjectType()
+class StoredAccount {
+  @Field(() => String)
+  id: string
+
+  @Field(() => String)
+  name: string
+
+  @Field(() => Boolean)
+  isFullAccess: boolean
+
+  @Field(() => Boolean)
+  isSandbox: boolean
+
+  @Field(() => Float, { nullable: true })
+  liquidPortfolio?: number
+}
+
+@ObjectType()
+class StoredCurrency {
+  @Field(() => String)
+  figi: string
+
+  @Field(() => String)
+  name: string
+
+  @Field(() => String)
+  isoName: string
+
+  @Field(() => Float)
+  lastPrice: number
+
+  @Field(() => Date)
+  date: Date
 }
 
 @Resolver()
@@ -34,5 +73,19 @@ export class StateResolver {
     const { bots } = store.getState()
 
     return bots
+  }
+
+  @Query(() => [StoredAccount])
+  storedAccounts(): StoredAccount[] {
+    const { accounts } = store.getState()
+
+    return accounts
+  }
+
+  @Query(() => [StoredCurrency])
+  storedCurrencies(): StoredCurrency[] {
+    const { currencies } = store.getState()
+
+    return currencies
   }
 }

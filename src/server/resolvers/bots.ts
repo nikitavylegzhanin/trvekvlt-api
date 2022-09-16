@@ -4,7 +4,7 @@ import { propEq } from 'ramda'
 import db, { Bot, BotStatus, OrderRule } from '../../db'
 import store from '../../store'
 import { selectBots, editBot, addBot } from '../../store/bots'
-import { toStore } from '../../app'
+import { botToStore } from '../../app'
 import {
   getLastPosition,
   isLastPositionOpen,
@@ -36,7 +36,7 @@ export class BotsResolver {
     const storedBot = storedBots.find(propEq('id', bot.id))
 
     if (status === BotStatus.RUNNING) {
-      const updatedStoredBot = await toStore({ ...bot, status })
+      const updatedStoredBot = await botToStore({ ...bot, status })
 
       if (storedBot) {
         store.dispatch(editBot(updatedStoredBot))

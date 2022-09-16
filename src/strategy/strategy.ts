@@ -23,7 +23,11 @@ import {
 import { Bot } from '../db'
 import { disableBotTillTomorrow } from './bot'
 
-export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
+export const runStrategy = async (
+  botId: Bot['id'],
+  lastPrice: number,
+  volume = 1
+) => {
   let bot = getBotById(selectBots(store.getState()), botId)
 
   // пропускаем торговлю если движок выключен или в процессе обработки
@@ -183,7 +187,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
     if (isOpeningRuleAvailable(openingRule, lastPosition)) {
       // усредняем если позиция не закрыта
       if (isOpenPartially) {
-        await averagingPosition(bot.id, lastPosition, openingRule)
+        await averagingPosition(bot.id, lastPosition, openingRule, volume)
 
         // процесс выполнен
         return store.dispatch(editBot({ id: bot.id, isProcessing: false }))
@@ -191,7 +195,7 @@ export const runStrategy = async (botId: Bot['id'], lastPrice: number) => {
 
       // иначе открываем новую
       if (nextLevel && !isLastLevel(nextLevel.id, bot.levels)) {
-        await openPosition(bot.id, nextLevel, openingRule)
+        await openPosition(bot.id, nextLevel, openingRule, volume)
       }
 
       // процесс выполнен

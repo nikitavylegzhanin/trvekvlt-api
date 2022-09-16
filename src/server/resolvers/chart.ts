@@ -12,7 +12,7 @@ import {
 import { Between, LessThan } from 'typeorm'
 
 import db, { Bot, Trend, Position, Order } from '../../db'
-import { getInstrument, getCandles } from '../../api'
+import { getInstrumentByUid, getCandles } from '../../api'
 
 @ObjectType()
 class Candle {
@@ -68,7 +68,7 @@ export class ChartResolver {
       where: { id: botId },
     })
 
-    const { figi } = await getInstrument(bot.ticker, bot.instrumentType)
+    const { figi } = await getInstrumentByUid(bot.uid)
     const candles = await getCandles(figi, from, to, interval)
 
     const firstTrend = await db.manager.findOne(Trend, {

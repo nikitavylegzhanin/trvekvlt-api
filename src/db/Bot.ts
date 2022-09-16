@@ -6,19 +6,12 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm'
-import { ObjectType, Field, ID, registerEnumType } from 'type-graphql'
+import { ObjectType, Field, ID, registerEnumType, Float } from 'type-graphql'
 
 import { Level } from './Level'
 import { Position } from './Position'
 import { Trend } from './Trend'
 import { Log } from './Log'
-
-export enum InstrumentType {
-  FUTURE = 'future',
-  SHARE = 'share',
-}
-
-registerEnumType(InstrumentType, { name: 'InstrumentType' })
 
 export enum BotStatus {
   RUNNING = 'RUNNING',
@@ -41,15 +34,15 @@ export class Bot {
 
   @Field(() => String)
   @Column()
-  name: string
+  uid: string
+
+  @Field(() => Float)
+  @Column('real')
+  maxVolume: number
 
   @Field(() => String)
   @Column()
-  ticker: string
-
-  @Field(() => InstrumentType)
-  @Column('enum', { enum: InstrumentType })
-  instrumentType: InstrumentType
+  name: string
 
   @Field(() => BotStatus)
   @Column('enum', { enum: BotStatus, default: BotStatus.RUNNING })
