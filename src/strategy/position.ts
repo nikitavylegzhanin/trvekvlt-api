@@ -30,11 +30,16 @@ import { sendMessage } from '../telegram'
 
 /**
  * Открытие новой позиции
+ * @param botId
+ * @param openLevel уровень от которого открываем позицию
+ * @param openingRule правило открытия
+ * @param lastPriceVolume объем стакана по последней цене
  */
 export const openPosition = async (
   botId: StoredBot['id'],
   openLevel: Level,
-  openingRule: OrderRule
+  openingRule: OrderRule,
+  lastPriceVolume: number
 ) => {
   try {
     const state = store.getState()
@@ -45,7 +50,6 @@ export const openPosition = async (
     const lastTrend = getLastTrend(bot)
     const operation = getOpenOperation(lastTrend)
 
-    // отправляем заявку
     const orderQt = getOrderQt(
       bot.lastPrice,
       bot.currency,
@@ -54,6 +58,10 @@ export const openPosition = async (
       account?.liquidPortfolio
     )
 
+    // открываем только при достаточном объеме
+    if (orderQt < lastPriceVolume) return
+
+    // отправляем заявку
     const placedOrder = await placeOrder(
       bot.figi,
       orderQt,
@@ -130,37 +138,17 @@ export const openPosition = async (
 
 /**
  * Усреденение позиции
+ * @param botId
+ * @param position открытая позиция
+ * @param averagingRule правило усреднения
+ * @param lastPriceVolume объем стакана по последней цене
  */
 export const averagingPosition = async (
   botId: StoredBot['id'],
   position: Position,
-  averagingRule: OrderRule
+  averagingRule: OrderRule,
+  lastPriceVolume: number
 ) => {
-  const availableRules = position.availableRules.filter(
-    (rule) => rule !== averagingRule
-  )
-  const status = getPositionNextStatus(availableRules)
-
-  // блочим уровень, если позиция открыта полностью
-  if (status === PositionStatus.OPEN_FULL) {
-    store.dispatch(
-      editData({
-        botId,
-        level: {
-          id: position.openLevel.id,
-          status: LevelStatus.DISABLED_DURING_SESSION,
-        },
-        position: {
-          id: position.id,
-          openLevel: {
-            ...position.openLevel,
-            status: LevelStatus.DISABLED_DURING_SESSION,
-          },
-        },
-      })
-    )
-  }
-
   try {
     const state = store.getState()
     const bots = selectBots(state)
@@ -170,7 +158,6 @@ export const averagingPosition = async (
     const lastTrend = getLastTrend(bot)
     const operation = getOpenOperation(lastTrend)
 
-    // отправляем заявку
     const orderQt = getOrderQt(
       bot.lastPrice,
       bot.currency,
@@ -179,6 +166,35 @@ export const averagingPosition = async (
       account?.liquidPortfolio
     )
 
+    // усредняем только при достаточном объеме
+    if (orderQt < lastPriceVolume) return
+
+    const availableRules = position.availableRules.filter(
+      (rule) => rule !== averagingRule
+    )
+    const status = getPositionNextStatus(availableRules)
+
+    // блочим уровень, если позиция открыта полностью
+    if (status === PositionStatus.OPEN_FULL) {
+      store.dispatch(
+        editData({
+          botId,
+          level: {
+            id: position.openLevel.id,
+            status: LevelStatus.DISABLED_DURING_SESSION,
+          },
+          position: {
+            id: position.id,
+            openLevel: {
+              ...position.openLevel,
+              status: LevelStatus.DISABLED_DURING_SESSION,
+            },
+          },
+        })
+      )
+    }
+
+    // отправляем заявку
     const placedOrder = await placeOrder(
       bot.figi,
       orderQt,

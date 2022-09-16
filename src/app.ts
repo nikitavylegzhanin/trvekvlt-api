@@ -1,4 +1,5 @@
 import { Account } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/Account'
+import { MarketDataResponse__Output } from '@tinkoff/invest-js/build/generated/tinkoff/public/invest/api/contract/v1/MarketDataResponse'
 import { Raw } from 'typeorm'
 import {
   not,
@@ -23,6 +24,7 @@ import {
   getInstrumentByUid,
   getTradingSchedule,
   marketDataStream,
+  parseQuotation,
 } from './api'
 import store from './store'
 import { StoredAccount, initAccounts } from './store/accounts'
@@ -30,7 +32,7 @@ import { initCurrencies } from './store/currencies'
 import { StoredBot, initBots, selectBots } from './store/bots'
 import { Bot, Level, Trend, Position } from './db'
 import { sendMessage } from './telegram'
-import { getLastTrend, getLastPrice } from './strategy/utils'
+import { getLastTrend, isDowntrend } from './strategy/utils'
 import { runStrategy } from './strategy'
 
 const accountToStore = async (
@@ -157,32 +159,21 @@ export const init = async () => {
   })
 }
 
-type Order = {
-  price: number
-  quantity: number
-}
-
-const parseOrder = (data: any): Order => ({
-  price: Number.parseFloat(
-    (parseInt(data?.price?.units) + data?.price?.nano / 1000000000).toFixed(2)
-  ),
-  quantity: Number.parseInt(data?.quantity),
-})
-
 export const run = async () => {
-  marketDataStream.on('data', (data) => {
+  marketDataStream.on('data', (data: MarketDataResponse__Output) => {
     if (data.payload === 'orderbook') {
       const bots = selectBots(store.getState())
       const { figi, bids, asks } = data[data.payload]
 
       bots.filter(propEq('figi', figi)).forEach((bot) => {
-        const lastPrice = getLastPrice(
-          parseOrder(bids[0]).price,
-          parseOrder(asks[0]).price,
-          getLastTrend(bot)
-        )
+        const lastTrend = getLastTrend(bot)
+        const lastPrice = (isDowntrend(lastTrend) ? asks : bids)[0]
 
-        runStrategy(bot.id, lastPrice)
+        runStrategy(
+          bot.id,
+          parseQuotation(lastPrice.price),
+          Number.parseInt(lastPrice.quantity)
+        )
       })
     }
   })
