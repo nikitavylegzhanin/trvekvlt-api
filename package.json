@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/jest": "29.0.3",
-    "@types/node": "16.11.60",
+    "@types/node": "16.11.62",
     "@types/ramda": "0.28.15",
     "dotenv": "16.0.2",
     "jest": "29.0.3",
