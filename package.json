@@ -10,7 +10,7 @@
   "dependencies": {
     "@reduxjs/toolkit": "^1.6.1",
     "@tinkoff/invest-js": "^1.0.3",
-    "apollo-server": "3.10.2",
+    "apollo-server": "3.10.3",
     "ramda": "^0.28.0",
     "telegraf": "^4.7.0",
     "type-graphql": "^1.2.0-rc.1",
